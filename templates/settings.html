@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComicVault — Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+{% include '_shared_css.html' %}
+
+.settings-section{margin-bottom:32px;}
+.section-heading{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;color:var(--text);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.section-heading svg{width:16px;height:16px;color:var(--accent);}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;animation:fadeUp .3s ease both;}
+.card-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px;font-family:'IBM Plex Mono',monospace;}
+
+.field{margin-bottom:16px;}
+.field:last-child{margin-bottom:0;}
+.field-label{font-size:12px;font-weight:500;color:var(--dim);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
+.field-hint{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;}
+.toggle-row+.toggle-row{border-top:1px solid var(--border);}
+.toggle-name{font-size:13px;font-weight:500;}
+.toggle-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:11px;cursor:pointer;transition:background .2s;}
+.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;}
+.toggle input:checked + .toggle-slider{background:var(--accent);}
+.toggle input:checked + .toggle-slider::before{transform:translateX(18px);}
+
+.range-row{display:flex;align-items:center;gap:12px;}
+.range-input{flex:1;-webkit-appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none;}
+.range-input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #fff;box-shadow:0 0 6px color-mix(in srgb,var(--accent) 40%,transparent);}
+.range-val{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);min-width:36px;text-align:right;}
+
+.color-swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .15s;}
+.color-swatch:hover,.color-swatch.active{border-color:var(--text);transform:scale(1.15);}
+
+.save-status{font-size:12px;color:var(--green);font-family:'IBM Plex Mono',monospace;opacity:0;transition:opacity .3s;}
+.save-status.show{opacity:1;}
+
+.about-block{font-size:13px;color:var(--dim);line-height:1.75;}
+.about-block strong{color:var(--text);}
+.about-block code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+</style>
+{% include '_theme_init.html' %}
+</head>
+<body>
+<div class="shell">
+  {% include '_nav.html' %}
+  <div class="main">
+    <div class="topbar"><h1>SETTINGS</h1></div>
+    <div class="content" id="settingsContent">
+      <div style="color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:13px;padding:40px;text-align:center;">Loading…</div>
+    </div>
+  </div>
+</div>
+
+{% include '_confirm.html' %}
+
+<script>
+let cfg = {};
+let isDirty = false;
+let savedSnapshot = '';
+
+function markDirty() {
+  isDirty = true;
+  const btn = document.getElementById('saveBtn');
+  if (btn) btn.style.boxShadow = '0 0 0 2px color-mix(in srgb,var(--accent) 50%,transparent)';
+}
+
+function markClean() {
+  isDirty = false;
+  savedSnapshot = JSON.stringify(collectValues());
+  const btn = document.getElementById('saveBtn');
+  if (btn) btn.style.boxShadow = '';
+}
+
+// In-app nav interception with styled confirm
+document.addEventListener('click', async e => {
+  const link = e.target.closest('a[href]');
+  if (!link || !isDirty) return;
+  const href = link.getAttribute('href');
+  if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+  if (!window.location.pathname.startsWith('/settings')) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const ok = await CV.confirm(
+    'You have unsaved changes in Settings. Leave without saving?',
+    'Unsaved Changes',
+    'Leave'
+  );
+  if (ok) {
+    isDirty = false;
+    location.href = href;
+  }
+}, true);
+
+async function load() {
+  const r = await fetch('/api/settings');
+  cfg = await r.json();
+  render(cfg);
+}
+
+function v(id) { return document.getElementById(id); }
+
+function render(c) {
+  document.getElementById('settingsContent').innerHTML = `
+
+    <!-- Downloads -->
+    <div class="settings-section">
+      <div class="section-heading">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Downloads
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card" style="animation-delay:.0s">
+          <div class="card-title">Storage</div>
+          <div class="field">
+            <div class="field-label">Library Directory <span class="field-hint">restart to apply</span></div>
+            <input class="field-input" id="library_dir" value="${esc(c.library_dir||'library')}" type="text">
+          </div>
+          <div class="field">
+            <div class="field-label">Max Concurrent Downloads <span class="field-hint">simultaneous jobs</span></div>
+            <div class="range-row">
+              <input class="range-input" id="max_concurrent" type="range" min="1" max="6" value="${c.max_concurrent||2}" oninput="v('concVal').textContent=this.value">
+              <span class="range-val" id="concVal">${c.max_concurrent||2}</span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Parallel Images Per Download <span class="field-hint">faster per-job image fetching</span></div>
+            <div class="range-row">
+              <input class="range-input" id="max_concurrent_images" type="range" min="1" max="16" value="${c.max_concurrent_images||6}" oninput="v('imgConcVal').textContent=this.value">
+              <span class="range-val" id="imgConcVal">${c.max_concurrent_images||6}</span>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Auto-generate CBZ</div><div class="toggle-desc">Pack downloads into .cbz archive</div></div>
+            <label class="toggle"><input type="checkbox" id="auto_cbz" ${c.auto_cbz?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Auto-open Browser</div><div class="toggle-desc">Open browser tab on startup</div></div>
+            <label class="toggle"><input type="checkbox" id="auto_open_browser" ${c.auto_open_browser!==false?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+
+        <div class="settings-card" style="animation-delay:.05s">
+          <div class="card-title">Image Processing</div>
+          <div class="field">
+            <div class="field-label">Output Format</div>
+            <select class="field-select" id="image_format">
+              <option value="original" ${c.image_format==='original'||!c.image_format?'selected':''}>Keep Original</option>
+              <option value="jpg" ${c.image_format==='jpg'?'selected':''}>Convert to JPG</option>
+              <option value="png" ${c.image_format==='png'?'selected':''}>Convert to PNG</option>
+              <option value="webp" ${c.image_format==='webp'?'selected':''}>Convert to WebP</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">JPG / WebP Quality</div>
+            <div class="range-row">
+              <input class="range-input" id="jpg_quality" type="range" min="50" max="100" value="${c.jpg_quality||90}" oninput="v('jpgVal').textContent=this.value+'%'">
+              <span class="range-val" id="jpgVal">${c.jpg_quality||90}%</span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Max Image Width (px) <span class="field-hint">0 = no resize</span></div>
+            <input class="field-input" id="max_width" value="${c.max_width||0}" type="number" min="0" step="100" placeholder="e.g. 1920">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reader -->
+    <div class="settings-section">
+      <div class="section-heading">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        Reader
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card" style="animation-delay:.1s">
+          <div class="card-title">Display</div>
+          <div class="field">
+            <div class="field-label">Default Reading Mode</div>
+            <select class="field-select" id="reader_mode">
+              <option value="single" ${c.reader_mode==='single'||!c.reader_mode?'selected':''}>Single Page</option>
+              <option value="double" ${c.reader_mode==='double'?'selected':''}>Double Page</option>
+              <option value="scroll" ${c.reader_mode==='scroll'?'selected':''}>Vertical Scroll</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Reading Direction</div>
+            <select class="field-select" id="reading_direction">
+              <option value="ltr" ${c.reading_direction==='ltr'||!c.reading_direction?'selected':''}>Left to Right</option>
+              <option value="rtl" ${c.reading_direction==='rtl'?'selected':''}>Right to Left (Manga)</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Preload Pages Ahead</div>
+            <div class="range-row">
+              <input class="range-input" id="preload_pages" type="range" min="1" max="10" value="${c.preload_pages||3}" oninput="v('preloadVal').textContent=this.value">
+              <span class="range-val" id="preloadVal">${c.preload_pages||3}</span>
+            </div>
+          </div>
+        </div>
+        <div class="settings-card" style="animation-delay:.15s">
+          <div class="card-title">Behaviour</div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Remember Position</div><div class="toggle-desc">Resume from last read page</div></div>
+            <label class="toggle"><input type="checkbox" id="remember_position" ${c.remember_position!==false?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Keyboard Navigation</div><div class="toggle-desc">Arrow keys to turn pages</div></div>
+            <label class="toggle"><input type="checkbox" id="keyboard_nav" ${c.keyboard_nav!==false?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Fullscreen on Open</div><div class="toggle-desc">Auto-enter fullscreen in reader</div></div>
+            <label class="toggle"><input type="checkbox" id="fullscreen_on_open" ${c.fullscreen_on_open?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Show Page Numbers</div><div class="toggle-desc">Overlay page counter</div></div>
+            <label class="toggle"><input type="checkbox" id="show_page_numbers" ${c.show_page_numbers!==false?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network -->
+    <div class="settings-section">
+      <div class="section-heading">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+        Network &amp; Scraping
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card" style="animation-delay:.2s">
+          <div class="card-title">Connection</div>
+          <div class="field">
+            <div class="field-label">HTTP Proxy <span class="field-hint">blank = none</span></div>
+            <input class="field-input" id="proxy" value="${esc(c.proxy||'')}" type="text" placeholder="http://127.0.0.1:8080">
+          </div>
+          <div class="field">
+            <div class="field-label">Custom User-Agent <span class="field-hint">blank = default</span></div>
+            <input class="field-input" id="user_agent" value="${esc(c.user_agent||'')}" type="text" placeholder="Mozilla/5.0 …">
+          </div>
+          <div class="field">
+            <div class="field-label">Request Timeout (seconds)</div>
+            <input class="field-input" id="request_timeout" value="${c.request_timeout||30}" type="number" min="5" max="300">
+          </div>
+        </div>
+        <div class="settings-card" style="animation-delay:.25s">
+          <div class="card-title">Rate Limiting</div>
+          <div class="field">
+            <div class="field-label">Delay Between Requests (ms)</div>
+            <div class="range-row">
+              <input class="range-input" id="request_delay_ms" type="range" min="0" max="3000" step="100" value="${c.request_delay_ms||500}" oninput="v('delayVal').textContent=this.value+'ms'">
+              <span class="range-val" id="delayVal">${c.request_delay_ms||500}ms</span>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">Max Retries on Failure</div>
+            <div class="range-row">
+              <input class="range-input" id="max_retries" type="range" min="1" max="10" value="${c.max_retries||5}" oninput="v('retriesVal').textContent=this.value">
+              <span class="range-val" id="retriesVal">${c.max_retries||5}</span>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Use FlareSolverr</div><div class="toggle-desc">Bypass Cloudflare (localhost:8191)</div></div>
+            <label class="toggle"><input type="checkbox" id="use_flaresolverr" ${c.use_flaresolverr?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Library -->
+    <div class="settings-section">
+      <div class="section-heading">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        Library
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card" style="animation-delay:.3s">
+          <div class="card-title">Default Filters</div>
+          <div class="field">
+            <div class="field-label">Default Sort</div>
+            <select class="field-select" id="default_sort">
+              <option value="date_added" ${c.default_sort==='date_added'||!c.default_sort?'selected':''}>Date Added</option>
+              <option value="title" ${c.default_sort==='title'?'selected':''}>Title</option>
+              <option value="rating" ${c.default_sort==='rating'?'selected':''}>Rating</option>
+              <option value="last_read" ${c.default_sort==='last_read'?'selected':''}>Last Read</option>
+              <option value="page_count" ${c.default_sort==='page_count'?'selected':''}>Page Count</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Default View</div>
+            <select class="field-select" id="default_view">
+              <option value="grid" ${c.default_view==='grid'||!c.default_view?'selected':''}>Grid</option>
+              <option value="list" ${c.default_view==='list'?'selected':''}>List</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Cards Per Row (grid) <span class="field-hint">0 = auto</span></div>
+            <input class="field-input" id="grid_columns" value="${c.grid_columns||0}" type="number" min="0" max="12">
+          </div>
+        </div>
+        <div class="settings-card" style="animation-delay:.35s">
+          <div class="card-title">Metadata</div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Auto-fetch Metadata</div><div class="toggle-desc">Fetch tags/author on import</div></div>
+            <label class="toggle"><input type="checkbox" id="auto_metadata" ${c.auto_metadata!==false?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Extract Cover on Import</div><div class="toggle-desc">Use first page as cover thumbnail</div></div>
+            <label class="toggle"><input type="checkbox" id="extract_cover" ${c.extract_cover!==false?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div><div class="toggle-name">Show Explicit Tags</div><div class="toggle-desc">Display NSFW tag labels</div></div>
+            <label class="toggle"><input type="checkbox" id="show_explicit_tags" ${c.show_explicit_tags!==false?'checked':''}><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Appearance -->
+    <div class="settings-section">
+      <div class="section-heading">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 8a4 4 0 0 1 0 8"/></svg>
+        Appearance
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card" style="animation-delay:.05s">
+          <div class="card-title">Accent Color</div>
+          <div class="field">
+            <div class="field-label">Primary Accent Color <span class="field-hint">previews live as you pick</span></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;" id="colorPresets">
+              <button class="color-swatch" data-color="#e63946" style="background:#e63946" title="Crimson Red (default)"></button>
+              <button class="color-swatch" data-color="#6496ff" style="background:#6496ff" title="Electric Blue"></button>
+              <button class="color-swatch" data-color="#f4a261" style="background:#f4a261" title="Amber"></button>
+              <button class="color-swatch" data-color="#2dc653" style="background:#2dc653" title="Neon Green"></button>
+              <button class="color-swatch" data-color="#c864ff" style="background:#c864ff" title="Purple"></button>
+              <button class="color-swatch" data-color="#ff6b9d" style="background:#ff6b9d" title="Pink"></button>
+              <button class="color-swatch" data-color="#00d4ff" style="background:#00d4ff" title="Cyan"></button>
+              <button class="color-swatch" data-color="#ff9500" style="background:#ff9500" title="Orange"></button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input type="color" id="accent_color_picker" value="${esc(c.accent_color||'#e63946')}" style="width:44px;height:36px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg3);cursor:pointer;padding:2px;">
+              <input class="field-input" id="accent_color" value="${esc(c.accent_color||'#e63946')}" type="text" placeholder="#e63946" style="margin:0;flex:1;" maxlength="7">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="settings-section">
+      <div class="section-heading">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+        About
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card" style="animation-delay:.4s">
+          <div class="about-block">
+            <p><strong>ComicVault</strong> v3.0.0</p>
+            <p style="margin-top:8px;">A local manga archiver and reader. All data stays on your machine — no accounts, no tracking, no cloud.</p>
+            <p style="margin-top:12px;"><code>Backend: FastAPI + SQLite</code><br><code>Storage: ${esc(c.library_dir||'library')}/</code><br><code>Port: 7771</code></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;padding:20px 0 32px;">
+      <button class="btn btn-primary" id="saveBtn">Save Settings</button>
+      <button class="btn btn-ghost" id="resetBtn">Reset to Defaults</button>
+      <span class="save-status" id="saveStatus">✓ Saved successfully</span>
+    </div>
+  `;
+
+  document.getElementById('saveBtn').addEventListener('click', save);
+  document.getElementById('resetBtn').addEventListener('click', resetDefaults);
+
+  // Color swatches
+  document.querySelectorAll('.color-swatch').forEach(sw => {
+    if (sw.dataset.color === (c.accent_color || '#e63946')) sw.classList.add('active');
+    sw.addEventListener('click', () => {
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      document.getElementById('accent_color').value = sw.dataset.color;
+      document.getElementById('accent_color_picker').value = sw.dataset.color;
+      applyAccent(sw.dataset.color);
+      markDirty();
+    });
+  });
+
+  // Color picker — live preview without needing a button
+  document.getElementById('accent_color_picker').addEventListener('input', e => {
+    document.getElementById('accent_color').value = e.target.value;
+    applyAccent(e.target.value);
+    markDirty();
+  });
+  document.getElementById('accent_color').addEventListener('input', e => {
+    const val = e.target.value;
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+      document.getElementById('accent_color_picker').value = val;
+      applyAccent(val);
+    }
+    markDirty();
+  });
+
+  // Watch all inputs for dirty state
+  document.querySelectorAll('.field-input,.field-select,.range-input,.toggle input').forEach(el => {
+    el.addEventListener('change', markDirty);
+    el.addEventListener('input', markDirty);
+  });
+
+  markClean();
+}
+
+function applyAccent(color) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+  document.documentElement.style.setProperty('--accent', color);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function collectValues() {
+  const g = id => document.getElementById(id);
+  return {
+    library_dir:        g('library_dir').value,
+    max_concurrent:          parseInt(g('max_concurrent').value),
+    max_concurrent_images:   parseInt(g('max_concurrent_images').value),
+    auto_cbz:           g('auto_cbz').checked,
+    auto_open_browser:  g('auto_open_browser').checked,
+    image_format:       g('image_format').value,
+    jpg_quality:        parseInt(g('jpg_quality').value),
+    max_width:          parseInt(g('max_width').value) || 0,
+    reader_mode:        g('reader_mode').value,
+    reading_direction:  g('reading_direction').value,
+    preload_pages:      parseInt(g('preload_pages').value),
+    remember_position:  g('remember_position').checked,
+    keyboard_nav:       g('keyboard_nav').checked,
+    fullscreen_on_open: g('fullscreen_on_open').checked,
+    show_page_numbers:  g('show_page_numbers').checked,
+    proxy:              g('proxy').value,
+    user_agent:         g('user_agent').value,
+    request_timeout:    parseInt(g('request_timeout').value),
+    request_delay_ms:   parseInt(g('request_delay_ms').value),
+    max_retries:        parseInt(g('max_retries').value),
+    use_flaresolverr:   g('use_flaresolverr').checked,
+    default_sort:       g('default_sort').value,
+    default_view:       g('default_view').value,
+    grid_columns:       parseInt(g('grid_columns').value) || 0,
+    auto_metadata:      g('auto_metadata').checked,
+    extract_cover:      g('extract_cover').checked,
+    show_explicit_tags: g('show_explicit_tags').checked,
+    accent_color:       g('accent_color').value || '#e63946',
+  };
+}
+
+async function save() {
+  const data = collectValues();
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  cfg = data;
+  // Cache accent color in localStorage for instant flash-free load on all pages
+  try { localStorage.setItem('cv_accent', data.accent_color); } catch(e) {}
+  markClean();
+  const s = document.getElementById('saveStatus');
+  s.classList.add('show');
+  setTimeout(() => s.classList.remove('show'), 2500);
+}
+
+async function resetDefaults() {
+  const ok = await CV.confirm(
+    'All settings will be reset to their default values.',
+    'Reset to Defaults',
+    'Reset'
+  );
+  if (!ok) return;
+  await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const r = await fetch('/api/settings');
+  cfg = await r.json();
+  isDirty = false;
+  // Clear cached accent
+  try { localStorage.setItem('cv_accent', cfg.accent_color || '#e63946'); } catch(e) {}
+  render(cfg);
+}
+
+load();
+</script>
+</body>
+</html>

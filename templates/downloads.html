@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComicVault — Downloads</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#080810;--bg2:#0f0f1a;--bg3:#161625;--border:#1e1e35;--accent:#e63946;--text:#e8e8f0;--dim:#7a7a9a;--muted:#3a3a5a;--gold:#f4a261;--green:#2dc653;--sw:240px;--r:8px;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");background-size:200px;opacity:.35;}
+  .shell{display:flex;height:100vh;}
+  .sidebar{width:var(--sw);min-width:var(--sw);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;}
+  .logo{padding:22px 20px 16px;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--accent);border-bottom:1px solid var(--border);}
+  .logo small{display:block;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:2px;margin-top:2px;}
+  nav{padding:12px 0;flex:1;overflow-y:auto;}
+  .nav-section{padding:8px 16px 4px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;color:var(--dim);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+  .nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, transparent);}
+  .nav-item svg{width:15px;height:15px;flex-shrink:0;}
+  .nav-badge{background:var(--accent);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;font-family:'IBM Plex Mono',monospace;margin-left:auto;}
+  .sidebar-foot{padding:12px 20px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{display:flex;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+  .topbar h1{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;}
+  .content{flex:1;overflow-y:auto;padding:24px 28px;}
+  .content::-webkit-scrollbar{width:4px;}
+  .content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+  /* Stats row */
+  .stats-row{display:flex;gap:12px;margin-bottom:24px;}
+  .stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;flex:1;text-align:center;}
+  .stat-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;}
+  .stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--text);}
+  .stat-val.gold{color:var(--gold);}
+  .stat-val.green{color:var(--green);}
+  .stat-val.accent{color:var(--accent);}
+
+  /* Section */
+  .section-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-family:'IBM Plex Mono',monospace;}
+
+  /* Job cards */
+  .jobs-list{display:flex;flex-direction:column;gap:10px;}
+  .job-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;transition:border-color .2s;}
+  .job-card.status-complete{border-color:rgba(45,198,83,.2);}
+  .job-card.status-error,.job-card.status-cancelled{border-color:color-mix(in srgb,var(--accent) 20%,transparent);}
+  .job-card.status-downloading,.job-card.status-scraping{border-color:rgba(244,162,97,.25);}
+  .job-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .job-source{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:3px;font-family:'IBM Plex Mono',monospace;flex-shrink:0;}
+  .job-source.nhentai{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);}
+  .job-source.weebcentral{background:rgba(100,150,255,.15);color:#6496ff;}
+  .job-source.local_cbz{background:rgba(45,198,83,.15);color:var(--green);}
+  .job-title{flex:1;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .job-status{font-size:10px;font-weight:700;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;padding:3px 8px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;gap:5px;}
+  .job-status.queued{background:rgba(122,122,154,.1);color:var(--dim);}
+  .job-status.scraping,.job-status.downloading,.job-status.processing{background:rgba(244,162,97,.1);color:var(--gold);}
+  .job-status.complete{background:rgba(45,198,83,.1);color:var(--green);}
+  .job-status.error,.job-status.cancelled{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);}
+
+  /* Progress bar — uses CSS custom property so we can update without re-render */
+  .job-progress-track{height:4px;background:var(--border);border-radius:2px;margin-bottom:10px;overflow:hidden;}
+  .job-progress-fill{height:100%;border-radius:2px;background:var(--gold);transition:width .6s ease;}
+  .job-progress-fill.complete{background:var(--green);}
+  .job-progress-fill.error{background:var(--accent);}
+
+  .job-meta{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-wrap:wrap;}
+  .job-chapter{font-size:11px;color:var(--dim);font-style:italic;margin-bottom:6px;}
+  .job-error{font-size:11px;color:var(--accent);margin-top:8px;padding:8px;background:color-mix(in srgb,var(--accent) 6%,transparent);border-radius:5px;font-family:'IBM Plex Mono',monospace;}
+  .job-actions{margin-left:auto;display:flex;gap:6px;}
+
+  /* Spinner */
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spin{width:10px;height:10px;border:2px solid var(--gold);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:'DM Sans',sans-serif;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#c1121f;}
+  .btn-ghost{background:var(--bg3);color:var(--dim);border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--dim);}
+
+  /* Empty state */
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--muted);}
+  .empty svg{width:40px;height:40px;opacity:.2;}
+  .empty p{font-size:13px;}
+</style>
+{% include '_theme_init.html' %}
+</head>
+<body>
+<div class="shell">
+  {% include '_nav.html' %}
+  <div class="main">
+    <div class="topbar"><h1>DOWNLOADS</h1></div>
+    <div class="content">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-label">Active</div><div class="stat-val gold" id="statActive">0</div></div>
+        <div class="stat-box"><div class="stat-label">Queued</div><div class="stat-val" id="statQueued">0</div></div>
+        <div class="stat-box"><div class="stat-label">Complete</div><div class="stat-val green" id="statDone">0</div></div>
+        <div class="stat-box"><div class="stat-label">Failed</div><div class="stat-val accent" id="statFailed">0</div></div>
+      </div>
+
+      <!-- Active -->
+      <div id="activeSection">
+        <div class="section-title">Active &amp; Queued</div>
+        <div class="jobs-list" id="activeJobs">
+          <div class="empty"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg><p>No active downloads.</p></div>
+        </div>
+      </div>
+
+      <!-- Completed -->
+      <div id="historySection" style="margin-top:28px;">
+        <div class="section-title">Completed &amp; Failed</div>
+        <div class="jobs-list" id="historyJobs"></div>
+        <div class="empty" id="emptyHistory">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          <p>No completed downloads yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Smart DOM update — only touch what changed ──────────────────────────────
+// We store job states keyed by job_id and only re-render cards when something
+// meaningful changes, preventing the constant DOM thrashing that caused flickering.
+
+const jobCache = {};
+
+function jobFingerprint(j) {
+  return `${j.status}|${j.percent}|${j.done_pages}|${j.title}|${j.current_chapter}|${j.error_msg}|${j.speed_kbps.toFixed(0)}`;
+}
+
+function buildJobCard(j) {
+  const isActive  = ['queued','scraping','downloading','processing'].includes(j.status);
+  const isWC      = j.is_chapters;
+  const unit      = isWC ? 'chapter' : 'page';
+  const pct       = j.percent || 0;
+  const fillClass = j.status === 'complete' ? 'complete' : (j.status === 'error' || j.status === 'cancelled') ? 'error' : '';
+  const speed     = j.speed_kbps > 0 ? `${j.speed_kbps.toFixed(1)} KB/s` : '';
+  const eta       = j.eta_seconds > 0 ? `${j.eta_seconds}s left` : '';
+  const spinner   = (isActive && j.status !== 'queued') ? '<span class="spin"></span>' : '';
+
+  let actions = '';
+  if (j.status === 'error' || j.status === 'cancelled') {
+    actions += `<button class="btn btn-ghost" onclick="retryJob('${j.job_id}')">Retry</button>`;
+  }
+  if (isActive) {
+    actions += `<button class="btn btn-ghost" onclick="cancelJob('${j.job_id}')">Cancel</button>`;
+  }
+  if (j.comic_id) {
+    actions += `<a class="btn btn-ghost" href="/detail/${j.comic_id}">View</a>`;
+  }
+
+  const srcLabel = j.source === 'nhentai' ? 'nhentai' : j.source === 'weebcentral' ? 'weebcentral' : 'local';
+
+  return `
+  <div class="job-card status-${j.status}" id="job-${j.job_id}">
+    <div class="job-header">
+      <span class="job-source ${j.source}">${srcLabel}</span>
+      <span class="job-title">${esc(j.title || 'Fetching metadata…')}</span>
+      <span class="job-status ${j.status}">${spinner}${j.status}</span>
+    </div>
+    ${j.current_chapter ? `<div class="job-chapter">Chapter: ${esc(j.current_chapter)}</div>` : ''}
+    <div class="job-progress-track">
+      <div class="job-progress-fill ${fillClass}" style="width:${pct}%"></div>
+    </div>
+    <div class="job-meta">
+      <span>${j.done_pages}/${j.total_pages} ${unit}s</span>
+      <span>${pct}%</span>
+      ${speed ? `<span>${speed}</span>` : ''}
+      ${eta ? `<span>${eta}</span>` : ''}
+      ${j.failed_pages && j.failed_pages.length ? `<span style="color:var(--accent)">${j.failed_pages.length} failed</span>` : ''}
+      <div class="job-actions">${actions}</div>
+    </div>
+    ${j.error_msg ? `<div class="job-error">✗ ${esc(j.error_msg)}</div>` : ''}
+  </div>`;
+}
+
+function patchList(container, jobs) {
+  // Collect current DOM job cards by id
+  const existing = {};
+  for (const el of container.querySelectorAll('.job-card')) {
+    existing[el.id] = el;
+  }
+
+  // Desired order
+  const newOrder = jobs.map(j => `job-${j.job_id}`);
+
+  // Add or update
+  for (const j of jobs) {
+    const domId = `job-${j.job_id}`;
+    const fp = jobFingerprint(j);
+    const needsRender = !existing[domId] || jobCache[j.job_id] !== fp;
+
+    if (needsRender) {
+      jobCache[j.job_id] = fp;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = buildJobCard(j);
+      const newEl = tmp.firstElementChild;
+      if (existing[domId]) {
+        container.replaceChild(newEl, existing[domId]);
+        existing[domId] = newEl;
+      } else {
+        container.appendChild(newEl);
+        existing[domId] = newEl;
+      }
+    }
+  }
+
+  // Remove cards no longer in the list
+  const newSet = new Set(newOrder);
+  for (const [id, el] of Object.entries(existing)) {
+    if (!newSet.has(id)) {
+      el.remove();
+      delete existing[id];
+    }
+  }
+
+  // Re-order DOM to match data order
+  newOrder.forEach((id, i) => {
+    const el = container.querySelector(`#${id}`);
+    if (el && container.children[i] !== el) container.insertBefore(el, container.children[i] || null);
+  });
+}
+
+function updateUI(data) {
+  const jobs    = data.jobs || [];
+  const active  = jobs.filter(j => ['queued','scraping','downloading','processing'].includes(j.status));
+  const history = jobs.filter(j => !['queued','scraping','downloading','processing'].includes(j.status));
+
+  // Badge
+  const badge = document.getElementById('dlBadge');
+  if (badge) { badge.style.display=active.length?'inline':'none'; if(active.length) badge.textContent=active.length; }
+
+  // Stats
+  document.getElementById('statActive').textContent = active.filter(j=>j.status==='downloading'||j.status==='scraping').length;
+  document.getElementById('statQueued').textContent = active.filter(j=>j.status==='queued').length;
+  document.getElementById('statDone').textContent   = jobs.filter(j=>j.status==='complete').length;
+  document.getElementById('statFailed').textContent = jobs.filter(j=>j.status==='error'||j.status==='cancelled').length;
+
+  // Active section
+  const activeEl = document.getElementById('activeJobs');
+  if (active.length) {
+    // Remove empty placeholder if present
+    activeEl.querySelectorAll('.empty').forEach(e=>e.remove());
+    patchList(activeEl, active);
+  } else {
+    activeEl.innerHTML = '<div class="empty"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg><p>No active downloads.</p></div>';
+  }
+
+  // History section
+  const histEl  = document.getElementById('historyJobs');
+  const emptyEl = document.getElementById('emptyHistory');
+  if (history.length) {
+    histEl.querySelectorAll('.empty').forEach(e=>e.remove());
+    patchList(histEl, history.slice().reverse());
+    emptyEl.style.display = 'none';
+  } else {
+    histEl.innerHTML = '';
+    emptyEl.style.display = 'flex';
+  }
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function retryJob(id)  { await fetch(`/api/downloads/${id}/retry`,  {method:'POST'}); }
+async function cancelJob(id) { await fetch(`/api/downloads/${id}/cancel`, {method:'POST'}); }
+
+// WebSocket
+let ws;
+function connectWS() {
+  ws = new WebSocket(`ws://${location.host}/ws/downloads`);
+  ws.onmessage = e => { updateUI(JSON.parse(e.data)); };
+  ws.onclose   = () => { setTimeout(connectWS, 3000); };
+}
+
+fetch('/api/downloads').then(r=>r.json()).then(updateUI);
+connectWS();
+</script>
+<script>
+(function(){
+  function _cb(){
+    const ws=new WebSocket('ws://'+location.host+'/ws/downloads');
+    ws.onmessage=function(e){
+      const d=JSON.parse(e.data);
+      const n=d.jobs.filter(j=>['downloading','queued','scraping','processing'].includes(j.status)).length;
+      const b=document.getElementById('dlBadge');
+      if(!b)return;
+      b.style.display=n?'inline':'none';
+      if(n)b.textContent=n;
+    };
+    ws.onclose=function(){setTimeout(_cb,3000);};
+  }
+  _cb();
+})();
+</script>
+</body>
+</html>

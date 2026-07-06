@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ComicVault Reader</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050508;--ui:#0a0a12;--uib:rgba(8,8,18,0.94);--accent:#e63946;--text:#e8e8f0;--dim:#7a7a9a;--border:#1e1e35;--gold:#f4a261;--green:#2dc653;--r:8px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;user-select:none;}
+
+/* Top bar */
+.top-bar{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--uib);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:9px 16px;transition:transform .3s,opacity .3s;}
+.top-bar.hidden{transform:translateY(-100%);opacity:0;}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--dim);text-decoration:none;font-size:12px;padding:5px 10px;border-radius:var(--r);border:1px solid var(--border);transition:all .15s;flex-shrink:0;}
+.back-btn:hover{color:var(--text);border-color:var(--dim);}
+.bar-title{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;}
+.icon-btn{background:none;border:1px solid var(--border);color:var(--dim);border-radius:var(--r);padding:5px 9px;font-size:11px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+.icon-btn:hover,.icon-btn.active{color:var(--text);border-color:var(--dim);}
+.icon-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.icon-btn svg{width:12px;height:12px;}
+
+/* Bottom bar */
+.bot-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--uib);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:9px 16px;display:flex;align-items:center;gap:12px;transition:transform .3s,opacity .3s;}
+.bot-bar.hidden{transform:translateY(100%);opacity:0;}
+.nav-btn{background:var(--border);border:none;color:var(--dim);border-radius:var(--r);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.nav-btn:hover{background:var(--accent);color:#fff;}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed;}
+.prog-track{flex:1;height:4px;background:var(--border);border-radius:2px;position:relative;cursor:pointer;}
+.prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .1s;}
+.prog-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 0 8px color-mix(in srgb,var(--accent) 50%,transparent);pointer-events:none;transition:left .1s;}
+.page-disp{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);flex-shrink:0;display:flex;align-items:center;gap:4px;}
+.page-in{background:var(--border);border:none;color:var(--text);border-radius:4px;padding:2px 6px;width:48px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none;-moz-appearance:textfield;}
+.page-in::-webkit-outer-spin-button,.page-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+
+/* Viewport */
+.viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:50px 0 50px;overflow:hidden;}
+
+/* Click zones */
+.zone{position:fixed;top:50px;bottom:50px;width:28%;z-index:50;cursor:pointer;}
+.zone-prev{left:0;}
+.zone-next{right:0;}
+.mode-scroll .zone{display:none;}
+
+/* Page display modes */
+.page-wrap{display:flex;gap:3px;align-items:flex-start;height:100%;max-width:100%;transition:opacity .18s;}
+.page-wrap.fade{opacity:0;}
+.page-img{max-height:100%;max-width:100%;object-fit:contain;display:block;border-radius:2px;}
+.page-wrap.fit-width .page-img{max-height:none;width:100%;height:auto;}
+
+/* Scroll mode */
+.scroll-wrap{width:100%;height:100%;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.scroll-wrap::-webkit-scrollbar{width:3px;}
+.scroll-wrap::-webkit-scrollbar-thumb{background:var(--border);}
+.scroll-img{width:min(95%,900px);display:block;}
+
+/* Overlay panels */
+.panel-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,5,8,.92);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.panel-overlay.open{opacity:1;pointer-events:all;}
+.panel{background:#0f0f1a;border:1px solid var(--border);border-radius:12px;padding:28px;min-width:340px;max-height:80vh;overflow-y:auto;}
+.panel h2{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent);margin-bottom:16px;}
+.panel-close{background:var(--accent);border:none;color:#fff;border-radius:6px;padding:7px 18px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;margin-top:16px;}
+
+/* Shortcuts table */
+.sc-row{display:flex;align-items:center;gap:14px;padding:6px 0;border-bottom:1px solid #1e1e35;}
+.sc-row:last-child{border:none;}
+kbd{background:#1e1e35;border:1px solid #2e2e50;border-radius:4px;padding:2px 7px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text);min-width:28px;text-align:center;box-shadow:0 2px 0 #0a0a14;}
+.sc-desc{font-size:12px;color:var(--dim);}
+
+/* Metadata panel */
+.meta-cover{width:80px;border-radius:6px;display:block;margin-bottom:12px;}
+.meta-title{font-size:16px;font-weight:600;margin-bottom:4px;}
+.meta-sub{font-size:11px;color:var(--dim);margin-bottom:12px;}
+.meta-row{display:flex;gap:8px;margin-bottom:6px;font-size:12px;}
+.meta-label{color:var(--dim);min-width:70px;font-family:'IBM Plex Mono',monospace;font-size:10px;}
+.meta-val{color:var(--text);}
+.tag-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+.tag-pill{font-size:10px;padding:2px 7px;border-radius:10px;background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);font-family:'IBM Plex Mono',monospace;}
+
+/* Zoom indicator */
+.zoom-ind{position:fixed;bottom:62px;right:16px;background:var(--uib);border:1px solid var(--border);border-radius:var(--r);padding:3px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);opacity:0;transition:opacity .3s;pointer-events:none;}
+.zoom-ind.show{opacity:1;}
+
+/* Chapter selector */
+.ch-list{display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;margin-top:8px;}
+.ch-item{padding:7px 12px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--ui);transition:all .15s;display:flex;align-items:center;justify-content:space-between;}
+.ch-item:hover{border-color:var(--accent);color:var(--accent);}
+.ch-item.current{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);}
+
+/* Loading */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Rating stars */
+.stars{display:flex;gap:4px;margin-top:8px;}
+.star{font-size:20px;cursor:pointer;color:var(--border);transition:color .15s;}
+.star.on,.star:hover{color:var(--gold);}
+</style>
+{% include '_theme_init.html' %}
+</head>
+<body>
+<!-- Top bar -->
+<div class="top-bar" id="topBar">
+  <a href="/" class="back-btn">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M15 18l-6-6 6-6"/></svg>
+    Library
+  </a>
+  <span class="bar-title" id="barTitle">Loading…</span>
+  <div class="bar-right">
+    <button class="icon-btn" id="modeBtn">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="18"/></svg>
+      <span id="modeLbl">Single</span>
+    </button>
+    <button class="icon-btn" id="mangaDir" title="Reading direction">LTR</button>
+    <button class="icon-btn" id="fitBtn" title="Fit width">↔</button>
+    <button class="icon-btn" id="fsBtn" title="Fullscreen (F)">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+    </button>
+    <button class="icon-btn" id="metaBtn">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+    </button>
+    <button class="icon-btn" id="scBtn">?</button>
+  </div>
+</div>
+
+<!-- Zones -->
+<div class="zone zone-prev" id="zonePrev" onclick="navigate(-1)"></div>
+<div class="zone zone-next" id="zoneNext" onclick="navigate(1)"></div>
+
+<!-- Viewport -->
+<div class="viewport" id="viewport">
+  <div class="loading" id="loadingState">
+    <div class="spinner"></div>Loading pages…
+  </div>
+  <div class="page-wrap" id="pageWrap" style="display:none"></div>
+  <div class="scroll-wrap" id="scrollWrap" style="display:none"></div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bot-bar" id="botBar">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="prog-track" id="progTrack">
+    <div class="prog-fill" id="progFill"></div>
+    <div class="prog-thumb" id="progThumb"></div>
+  </div>
+  <div class="page-disp">
+    <input class="page-in" id="pageIn" type="number" min="1">
+    <span>/ <span id="totalPg">—</span></span>
+  </div>
+  <button class="nav-btn" id="nextBtn" onclick="navigate(1)">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
+
+<!-- Zoom indicator -->
+<div class="zoom-ind" id="zoomInd">100%</div>
+
+<!-- Shortcuts panel -->
+<div class="panel-overlay" id="scOverlay">
+  <div class="panel">
+    <h2>Keyboard Shortcuts</h2>
+    <div class="sc-row"><kbd>← / A</kbd><span class="sc-desc">Previous page</span></div>
+    <div class="sc-row"><kbd>→ / D</kbd><span class="sc-desc">Next page</span></div>
+    <div class="sc-row"><kbd>↑ / ↓</kbd><span class="sc-desc">Scroll (scroll mode)</span></div>
+    <div class="sc-row"><kbd>F</kbd><span class="sc-desc">Toggle fullscreen</span></div>
+    <div class="sc-row"><kbd>M</kbd><span class="sc-desc">Cycle reading mode</span></div>
+    <div class="sc-row"><kbd>R</kbd><span class="sc-desc">Toggle RTL/LTR</span></div>
+    <div class="sc-row"><kbd>W</kbd><span class="sc-desc">Toggle fit-width</span></div>
+    <div class="sc-row"><kbd>+ / -</kbd><span class="sc-desc">Zoom in/out</span></div>
+    <div class="sc-row"><kbd>0</kbd><span class="sc-desc">Reset zoom</span></div>
+    <div class="sc-row"><kbd>Home</kbd><span class="sc-desc">First page</span></div>
+    <div class="sc-row"><kbd>End</kbd><span class="sc-desc">Last page</span></div>
+    <div class="sc-row"><kbd>?</kbd><span class="sc-desc">This panel</span></div>
+    <div class="sc-row"><kbd>Esc</kbd><span class="sc-desc">Back to library</span></div>
+    <button class="panel-close" onclick="closeOverlays()">Close</button>
+  </div>
+</div>
+
+<!-- Metadata panel -->
+<div class="panel-overlay" id="metaOverlay">
+  <div class="panel" style="min-width:360px">
+    <h2>Comic Info</h2>
+    <img class="meta-cover" id="mCover" src="/static/no-cover.svg">
+    <div class="meta-title" id="mTitle">—</div>
+    <div class="meta-sub" id="mSub">—</div>
+    <div class="meta-row"><span class="meta-label">SOURCE</span><span class="meta-val" id="mSource">—</span></div>
+    <div class="meta-row"><span class="meta-label">LANGUAGE</span><span class="meta-val" id="mLang">—</span></div>
+    <div class="meta-row"><span class="meta-label">PAGES</span><span class="meta-val" id="mPages">—</span></div>
+    <div class="meta-row"><span class="meta-label">SIZE</span><span class="meta-val" id="mSize">—</span></div>
+    <div class="meta-row"><span class="meta-label">RATING</span>
+      <span class="stars" id="mStars">
+        <span class="star" data-r="1">★</span><span class="star" data-r="2">★</span>
+        <span class="star" data-r="3">★</span><span class="star" data-r="4">★</span><span class="star" data-r="5">★</span>
+      </span>
+    </div>
+    <div class="tag-wrap" id="mTags"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <a id="mDetailLink" href="#" style="flex:1;text-align:center;background:var(--border);color:var(--dim);border-radius:var(--r);padding:7px;font-size:12px;text-decoration:none;">Full Details</a>
+      <button class="panel-close" style="margin:0;flex:1;" onclick="closeOverlays()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COMIC_ID = "{{ comic_id }}";
+let pages = [];
+let cur = 0;
+let mode = 'single';   // single | double | scroll
+let rtl  = false;
+let zoom = 1;
+let fitW = false;
+let uiTimer;
+let uiVisible = true;
+let preloaded = new Set();
+let comicInfo = {};
+let preloadCount = 4;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const [infoR, pagesR, settingsR] = await Promise.all([
+    fetch(`/api/comic/${COMIC_ID}`),
+    fetch(`/api/comic/${COMIC_ID}/pages`),
+    fetch('/api/settings'),
+  ]);
+  comicInfo  = await infoR.json();
+  const pd   = await pagesR.json();
+  const cfg  = await settingsR.json().catch(() => ({}));
+
+  // Apply settings before render
+  if (cfg.reader_mode && ['single','double','scroll'].includes(cfg.reader_mode)) {
+    mode = cfg.reader_mode;
+    document.getElementById('modeLbl').textContent = {single:'Single',double:'Double',scroll:'Scroll'}[mode];
+  }
+  if (cfg.reading_direction === 'rtl') {
+    rtl = true;
+    document.getElementById('mangaDir').textContent = 'RTL';
+  }
+  if (cfg.preload_pages && cfg.preload_pages > 0) {
+    preloadCount = Math.min(cfg.preload_pages, 10);
+  }
+  if (cfg.fullscreen_on_open) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+
+  document.title = `${comicInfo.title || 'Comic'} — ComicVault`;
+  document.getElementById('barTitle').textContent = comicInfo.title || 'Untitled';
+  pages = pd.pages;
+
+  // Restore position only if remember_position is on (default true)
+  const rememberPos = cfg.remember_position !== false;
+  cur = rememberPos ? Math.min(comicInfo.read_page || 0, pages.length - 1) : 0;
+  cur = Math.max(0, cur);
+
+  document.getElementById('totalPg').textContent  = pages.length;
+  document.getElementById('pageIn').max           = pages.length;
+  document.getElementById('pageIn').value         = cur + 1;
+  document.getElementById('loadingState').style.display = 'none';
+
+  // Populate metadata panel
+  fillMeta(comicInfo);
+
+  // Block rating on chapters (comics with a series parent)
+  const isChapter = !!(comicInfo.series || comicInfo.chapter);
+  if (isChapter) {
+    document.querySelectorAll('.star').forEach(s => {
+      s.style.opacity   = '0.3';
+      s.style.cursor    = 'not-allowed';
+      s.title           = 'Rate via the series view in the library';
+      s.style.pointerEvents = 'none';
+    });
+    const rateLabel = document.querySelector('.meta-rating-label');
+    if (rateLabel) rateLabel.textContent = 'Rate via series view';
+  }
+
+  updateUI();
+  render();
+  setupEvents();
+  scheduleHide();
+}
+
+function fillMeta(c) {
+  // Cover path needs /library/ prefix if not already an absolute URL
+  const _rawCover = c.cover_path || '';
+  document.getElementById('mCover').src = _rawCover
+    ? (_rawCover.startsWith('/') ? _rawCover : `/library/${_rawCover}`)
+    : '/static/no-cover.svg';
+
+  // For series chapters, prefer the series cover (first chapter's cover from API)
+  if (c.series) {
+    fetch(`/api/library/series/${encodeURIComponent(c.series)}/chapters`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const rep = (d.chapters || []).find(ch => ch.cover_path);
+        if (rep && rep.cover_path) {
+          const cp = rep.cover_path;
+          document.getElementById('mCover').src =
+            cp.startsWith('/') ? cp : `/library/${cp}`;
+        }
+      }).catch(() => {});
+  }
+  document.getElementById('mTitle').textContent = c.title || 'Untitled';
+  document.getElementById('mSub').textContent   = [c.series, c.authors?.join(', ')].filter(Boolean).join(' · ');
+  document.getElementById('mSource').textContent = c.source || '—';
+  document.getElementById('mLang').textContent   = c.language || '—';
+  document.getElementById('mPages').textContent  = c.page_count || '—';
+  document.getElementById('mSize').textContent   = c.file_size_mb ? `${c.file_size_mb} MB` : '—';
+  // If this comic is part of a series, link to series info view
+  if (c.series) {
+    document.getElementById('mDetailLink').href = `/detail/${COMIC_ID}?series=1`;
+    document.getElementById('mDetailLink').title = `View series: ${c.series}`;
+    const linkEl = document.getElementById('mDetailLink');
+    if (linkEl) linkEl.textContent = 'View Series Info →';
+  } else {
+    document.getElementById('mDetailLink').href = `/detail/${COMIC_ID}`;
+  }
+  // Rating stars
+  const r = Math.round(c.rating || 0);
+  document.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < r));
+  // Tags
+  const tags = [...(c.tags||[]), ...(c.genres||[])].slice(0,20);
+  document.getElementById('mTags').innerHTML = tags.map(t => `<span class="tag-pill">${t}</span>`).join('');
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  if (!pages.length) return;
+  const pw = document.getElementById('pageWrap');
+  const sw = document.getElementById('scrollWrap');
+
+  if (mode === 'scroll') {
+    pw.style.display = 'none';
+    sw.style.display = '';
+    document.getElementById('viewport').className = 'viewport mode-scroll';
+    if (!sw.children.length) {
+      sw.innerHTML = pages.map((p, i) =>
+        `<img class="scroll-img" src="${p}" loading="${i<3?'eager':'lazy'}" data-i="${i}">`
+      ).join('');
+      // Scroll to current page
+      const t = sw.querySelector(`[data-i="${cur}"]`);
+      if (t) setTimeout(() => t.scrollIntoView({behavior:'smooth',block:'start'}), 100);
+    }
+    updateUI(); return;
+  }
+
+  document.getElementById('viewport').className = 'viewport';
+  sw.style.display = 'none';
+  pw.style.display = '';
+
+  // Fade transition
+  pw.classList.add('fade');
+  setTimeout(() => {
+    buildPages(pw);
+    pw.classList.remove('fade');
+    preloadAhead();
+    saveProgress();
+    updateUI();
+  }, 90);
+}
+
+function buildPages(pw) {
+  if (mode === 'double') {
+    const a = rtl ? cur + 1 : cur;
+    const b = rtl ? cur     : cur + 1;
+    let html = `<img class="page-img" src="${pages[a]}" style="max-width:49.5%" onerror="">`;
+    if (b < pages.length) html += `<img class="page-img" src="${pages[b]}" style="max-width:49.5%" onerror="">`;
+    if (rtl) html = html.split('</img>').reverse().join('</img>'); // crude RTL swap
+    pw.innerHTML = html;
+  } else {
+    pw.innerHTML = `<img class="page-img" src="${pages[cur]}" onerror="">`;
+  }
+  if (fitW) pw.classList.add('fit-width'); else pw.classList.remove('fit-width');
+  applyZoom();
+}
+
+function preloadAhead() {
+  for (let i = 1; i <= preloadCount; i++) {
+    const idx = rtl ? cur - i : cur + i;
+    if (idx >= 0 && idx < pages.length && !preloaded.has(idx)) {
+      new Image().src = pages[idx];
+      preloaded.add(idx);
+    }
+  }
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function navigate(dir) {
+  if (mode === 'scroll') return;
+  const step = mode === 'double' ? 2 : 1;
+  const next = cur + (rtl ? -dir : dir) * step;
+  if (next < 0 || next >= pages.length) return;
+  cur = next;
+  document.getElementById('pageIn').value = cur + 1;
+  render();
+}
+
+function goTo(n) {
+  cur = Math.max(0, Math.min(pages.length - 1, n - 1));
+  document.getElementById('pageIn').value = cur + 1;
+  // Rebuild scroll container if in scroll mode
+  if (mode === 'scroll') {
+    document.getElementById('scrollWrap').innerHTML = '';
+  }
+  render();
+}
+
+// ── Progress bar ─────────────────────────────────────────────────────────────
+function updateUI() {
+  const pct = pages.length > 1 ? (cur / (pages.length - 1)) * 100 : 0;
+  document.getElementById('progFill').style.width  = pct + '%';
+  document.getElementById('progThumb').style.left  = pct + '%';
+  document.getElementById('prevBtn').disabled = cur === 0;
+  document.getElementById('nextBtn').disabled = cur >= pages.length - 1;
+}
+
+function saveProgress() {
+  fetch(`/api/comic/${COMIC_ID}/progress`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({page: cur})
+  });
+}
+
+// ── Modes ─────────────────────────────────────────────────────────────────────
+const MODES = ['single','double','scroll'];
+const MODE_LBL = {single:'Single',double:'Double',scroll:'Scroll'};
+function cycleMode() {
+  mode = MODES[(MODES.indexOf(mode)+1) % MODES.length];
+  document.getElementById('modeLbl').textContent = MODE_LBL[mode];
+  document.getElementById('scrollWrap').innerHTML = '';
+  render();
+}
+
+// ── Zoom ──────────────────────────────────────────────────────────────────────
+function applyZoom() {
+  document.querySelectorAll('.page-img').forEach(img => {
+    img.style.transform = `scale(${zoom})`;
+    img.style.transformOrigin = 'center top';
+  });
+}
+function changeZoom(d) {
+  zoom = Math.min(4, Math.max(0.4, zoom + d));
+  applyZoom();
+  const el = document.getElementById('zoomInd');
+  el.textContent = Math.round(zoom * 100) + '%';
+  el.classList.add('show');
+  clearTimeout(changeZoom._t);
+  changeZoom._t = setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// ── UI hide / show ────────────────────────────────────────────────────────────
+function showUI() {
+  if (!uiVisible) {
+    uiVisible = true;
+    document.getElementById('topBar').classList.remove('hidden');
+    document.getElementById('botBar').classList.remove('hidden');
+  }
+  scheduleHide();
+}
+function scheduleHide() {
+  clearTimeout(uiTimer);
+  if (mode === 'scroll') return;
+  uiTimer = setTimeout(() => {
+    document.getElementById('topBar').classList.add('hidden');
+    document.getElementById('botBar').classList.add('hidden');
+    uiVisible = false;
+  }, 2800);
+}
+
+function closeOverlays() {
+  document.getElementById('scOverlay').classList.remove('open');
+  document.getElementById('metaOverlay').classList.remove('open');
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+function setupEvents() {
+  document.addEventListener('mousemove', showUI);
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (document.activeElement === document.getElementById('pageIn')) return;
+    if (e.key==='ArrowLeft'||e.key==='a'||e.key==='A')  navigate(-1);
+    if (e.key==='ArrowRight'||e.key==='d'||e.key==='D') navigate(1);
+    if (e.key==='f'||e.key==='F') toggleFS();
+    if (e.key==='m'||e.key==='M') cycleMode();
+    if (e.key==='r'||e.key==='R') { rtl = !rtl; document.getElementById('mangaDir').textContent = rtl?'RTL':'LTR'; render(); }
+    if (e.key==='w'||e.key==='W') { fitW = !fitW; document.getElementById('fitBtn').classList.toggle('on',fitW); render(); }
+    if (e.key==='+'||e.key==='=') changeZoom(0.1);
+    if (e.key==='-') changeZoom(-0.1);
+    if (e.key==='0') { zoom=1; applyZoom(); }
+    if (e.key==='Home') goTo(1);
+    if (e.key==='End')  goTo(pages.length);
+    if (e.key==='?') document.getElementById('scOverlay').classList.toggle('open');
+    if (e.key==='Escape') {
+      if (document.querySelector('.panel-overlay.open')) closeOverlays();
+      else location.href='/';
+    }
+  });
+
+  // Page input
+  document.getElementById('pageIn').addEventListener('change', e => goTo(parseInt(e.target.value)));
+
+  // Progress track click
+  document.getElementById('progTrack').addEventListener('click', e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    goTo(Math.round((e.clientX - r.left) / r.width * pages.length) + 1);
+  });
+
+  // Ctrl+scroll zoom
+  document.addEventListener('wheel', e => {
+    if (e.ctrlKey) { e.preventDefault(); changeZoom(e.deltaY < 0 ? 0.1 : -0.1); }
+  }, {passive:false});
+
+  // Scroll mode: track current page
+  document.getElementById('scrollWrap').addEventListener('scroll', e => {
+    const imgs = e.target.querySelectorAll('.scroll-img');
+    imgs.forEach((img, i) => {
+      const r = img.getBoundingClientRect();
+      if (r.top >= 0 && r.top < window.innerHeight * 0.5) {
+        cur = i;
+        document.getElementById('pageIn').value = i + 1;
+        updateUI();
+      }
+    });
+    saveProgress();
+  });
+
+  // Buttons
+  document.getElementById('modeBtn').addEventListener('click', cycleMode);
+  document.getElementById('fitBtn').addEventListener('click', () => { fitW=!fitW; document.getElementById('fitBtn').classList.toggle('on',fitW); render(); });
+  document.getElementById('fsBtn').addEventListener('click', toggleFS);
+  document.getElementById('scBtn').addEventListener('click', () => document.getElementById('scOverlay').classList.toggle('open'));
+  document.getElementById('metaBtn').addEventListener('click', () => document.getElementById('metaOverlay').classList.toggle('open'));
+  document.getElementById('mangaDir').addEventListener('click', () => {
+    rtl = !rtl; document.getElementById('mangaDir').textContent = rtl?'RTL':'LTR'; render();
+  });
+
+  // Overlay backdrop close
+  document.querySelectorAll('.panel-overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) closeOverlays(); }));
+
+  // Rating stars — blocked for chapter entries (rate via series view)
+  document.querySelectorAll('.star').forEach(s => {
+    s.addEventListener('click', () => {
+      if (s.style.pointerEvents === 'none') return;
+      const r = parseInt(s.dataset.r);
+      document.querySelectorAll('.star').forEach((x,i) => x.classList.toggle('on', i<r));
+      fetch(`/api/comic/${COMIC_ID}/rating`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rating:r})});
+    });
+  });
+
+  // Touch swipe
+  let touchX = 0;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) navigate(dx < 0 ? 1 : -1);
+  });
+}
+
+function toggleFS() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+init();
+</script>
+</body>
+</html>

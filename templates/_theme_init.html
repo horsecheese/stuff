@@ -1,0 +1,19 @@
+{# _theme_init.html — apply accent color synchronously to prevent flash #}
+{# Include this at the END of every <head> block, before </head>        #}
+<script>
+(function(){
+  try {
+    var a = localStorage.getItem('cv_accent');
+    if (a && /^#[0-9a-fA-F]{6}$/.test(a)) {
+      document.documentElement.style.setProperty('--accent', a);
+    }
+  } catch(e) {}
+  // Also fetch from server asynchronously to stay in sync
+  fetch('/api/settings').then(function(r){ return r.json(); }).then(function(cfg){
+    if (cfg && cfg.accent_color && /^#[0-9a-fA-F]{6}$/.test(cfg.accent_color)) {
+      document.documentElement.style.setProperty('--accent', cfg.accent_color);
+      try { localStorage.setItem('cv_accent', cfg.accent_color); } catch(e){}
+    }
+  }).catch(function(){});
+})();
+</script>

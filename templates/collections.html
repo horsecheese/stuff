@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ComicVault — Collections</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+{% include '_shared_css.html' %}
+
+.col-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+.col-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:all .2s;animation:fadeUp .3s ease both;cursor:pointer;}
+.col-card:hover{border-color:color-mix(in srgb,var(--accent) 50%,transparent);transform:translateY(-2px);}
+
+/* Cover: exactly 2 images side-by-side, or 1 full-width */
+.col-cover{height:140px;overflow:hidden;background:var(--bg3);display:flex;gap:2px;}
+.col-cover img{flex:1;width:50%;height:100%;object-fit:cover;}
+.col-cover.single img{width:100%;}
+
+.col-body{padding:12px 14px;}
+.col-name{font-size:14px;font-weight:600;margin-bottom:3px;}
+.col-count{font-size:11px;color:var(--dim);font-family:'IBM Plex Mono',monospace;}
+.col-desc{font-size:11px;color:var(--muted);margin-top:4px;}
+.col-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.col-btn{font-size:10px;padding:5px 10px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--dim);transition:all .15s;font-family:'DM Sans',sans-serif;}
+.col-btn:hover{color:var(--text);border-color:var(--dim);}
+.col-btn.del:hover{color:var(--accent);border-color:var(--accent);}
+.col-btn.browse{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent);}
+.col-btn.browse:hover{background:var(--accent);color:#fff;}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:240px;gap:12px;color:var(--muted);}
+.empty svg{width:44px;height:44px;opacity:.2;}
+.empty p{font-size:13px;}
+
+/* Edit/Create modal — wider to fit manga list */
+.big-modal{width:580px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;}
+.big-modal .modal-body{flex:1;overflow-y:auto;min-height:0;}
+
+/* Manga picker inside modal */
+.manga-picker{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:8px;}
+.manga-picker-search{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.manga-picker-search input{width:100%;background:none;border:none;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;}
+.manga-list{max-height:260px;overflow-y:auto;}
+.manga-list::-webkit-scrollbar{width:3px;}
+.manga-list::-webkit-scrollbar-thumb{background:var(--border);}
+.manga-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);transition:background .1s;}
+.manga-row:hover{background:rgba(255,255,255,.03);}
+.manga-row:last-child{border-bottom:none;}
+.manga-row-toggle{padding:3px 9px;font-size:11px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--dim);transition:all .15s;white-space:nowrap;flex-shrink:0;}
+.manga-row-toggle.in{border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);}
+</style>
+{% include '_theme_init.html' %}
+</head>
+<body>
+<div class="shell">
+  {% include '_nav.html' %}
+  <div class="main">
+    <div class="topbar">
+      <h1>COLLECTIONS</h1>
+      <button class="btn btn-primary" id="newBtn" style="margin-left:auto">+ New Collection</button>
+    </div>
+    <div class="content">
+      <div class="col-grid" id="colGrid"></div>
+      <div class="empty" id="emptyState" style="display:none">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <p>No collections yet. Create one to organise your comics!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create / Edit modal (includes manga picker) -->
+<div class="modal-overlay" id="modal">
+  <div class="modal big-modal">
+    <h2 id="modalTitle">New Collection</h2>
+    <div class="modal-body">
+      <div class="field"><label>Name</label><input id="colName" placeholder="e.g. Favourites, Read Later…"></div>
+      <div class="field"><label>Description (optional)</label><textarea id="colDesc" placeholder="What's in this collection?" style="height:52px;resize:vertical;"></textarea></div>
+
+      <!-- Manga picker embedded in edit -->
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;font-family:'IBM Plex Mono',monospace;">Manga in Collection</div>
+      <div class="manga-picker">
+        <div class="manga-picker-search">
+          <input id="mangaPickerSearch" placeholder="Search by title…">
+        </div>
+        <div class="manga-list" id="mangaPickerList"></div>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px;flex-shrink:0;">
+      <button class="btn btn-ghost" id="modalCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn">Create</button>
+    </div>
+  </div>
+</div>
+
+{% include '_confirm.html' %}
+
+<script>
+let collections     = [];
+let editingName     = null;
+let allLibraryComics = [];   // raw comics from API
+let seriesComics    = [];    // deduplicated: WC chapters collapsed to series representative
+let pickerColName   = null;  // which collection the picker is editing right now
+
+// ── Data loading ───────────────────────────────────────────────────────────
+async function load() {
+  const [colR, libR] = await Promise.all([
+    fetch('/api/collections'),
+    fetch('/api/library'),
+  ]);
+  collections      = (await colR.json()).collections;
+  allLibraryComics = (await libR.json()).comics;
+  seriesComics     = buildSeriesComics(allLibraryComics);
+
+  const byCol = buildByCol();
+  render(byCol);
+}
+
+/**
+ * Collapse WeebCentral chapters into one representative entry per series.
+ * For nhentai / local we keep each entry as-is.
+ */
+function buildSeriesComics(comics) {
+  const result = [];
+  const wcSeen = new Set();
+
+  for (const c of comics) {
+    if (c.source === 'weebcentral') {
+      const key = c.series || c.title.replace(/ — Chapter .+$/, '').trim();
+      if (!wcSeen.has(key)) {
+        wcSeen.add(key);
+        // Use this chapter as the representative; keep its cover + chapter IDs for toggling
+        result.push({ ...c, _seriesKey: key, _isSeriesProxy: true });
+      }
+    } else {
+      result.push(c);
+    }
+  }
+  return result;
+}
+
+/**
+ * All comic_ids that belong to a given series key (for WC) or just one id (others).
+ */
+function idsForSeries(seriesComic) {
+  if (seriesComic._isSeriesProxy) {
+    return allLibraryComics
+      .filter(c => {
+        const key = c.series || c.title.replace(/ — Chapter .+$/, '').trim();
+        return key === seriesComic._seriesKey;
+      })
+      .map(c => c.comic_id);
+  }
+  return [seriesComic.comic_id];
+}
+
+/**
+ * Is a series-comic considered "in" a collection?
+ * True if ANY chapter/entry in the group is in the collection.
+ */
+function inCollection(seriesComic, colName) {
+  if (seriesComic._isSeriesProxy) {
+    return allLibraryComics.some(c => {
+      const key = c.series || c.title.replace(/ — Chapter .+$/, '').trim();
+      return key === seriesComic._seriesKey && (c.collections || []).includes(colName);
+    });
+  }
+  return (seriesComic.collections || []).includes(colName);
+}
+
+/** Map collection name → list of comics (all individual, not collapsed) */
+function buildByCol() {
+  const byCol = {};
+  for (const c of allLibraryComics) {
+    for (const col of (c.collections || [])) {
+      if (!byCol[col]) byCol[col] = [];
+      byCol[col].push(c);
+    }
+  }
+  return byCol;
+}
+
+/**
+ * Pick the 2 best covers for a collection:
+ * Priority: Favorite+HighestRated > HighestRated > Favorite > DateAdded
+ * Returns at most 2 entries.
+ */
+function pickCoverComics(comics) {
+  if (!comics.length) return [];
+  if (comics.length === 1) return [comics[0]];
+
+  const scored = comics.map(c => ({
+    c,
+    score: (c.favorite ? 1000 : 0) + (c.rating || 0) * 100,
+    date:  c.date_added || '',
+  }));
+  scored.sort((a, b) => b.score - a.score || b.date.localeCompare(a.date));
+
+  // First pick: best score
+  const first = scored[0].c;
+  // Second pick: next highest that isn't the same comic
+  const second = scored.slice(1).find(x => x.c.comic_id !== first.comic_id)?.c;
+  return second ? [first, second] : [first];
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────────
+function render(byCol) {
+  const grid  = document.getElementById('colGrid');
+  const empty = document.getElementById('emptyState');
+  if (!collections.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = collections.map((col, idx) => {
+    const comics    = byCol[col.name] || [];
+    const picks     = pickCoverComics(comics);
+    const coverImgs = picks.map(c => {
+      const src = c.cover_path
+        ? (c.cover_path.startsWith('/') ? c.cover_path : `/library/${c.cover_path}`)
+        : '/static/no-cover.svg';
+      return `<img src="${src}" loading="lazy" onerror="this.src='/static/no-cover.svg'" alt="">`;
+    });
+    // Pad to exactly 2 if >1 comic available but we only got 1 pick (shouldn't happen but safety)
+    while (coverImgs.length < 2 && comics.length >= 2) coverImgs.push(`<img src="/static/no-cover.svg" alt="">`);
+
+    const single = picks.length <= 1;
+    const coverHTML = `<div class="col-cover${single ? ' single' : ''}">${coverImgs.join('')}</div>`;
+    const delay = Math.min(idx * 0.03, 0.4);
+
+    return `<div class="col-card" style="animation-delay:${delay}s">
+      ${coverHTML}
+      <div class="col-body">
+        <div class="col-name">${esc(col.name)}</div>
+        <div class="col-count">${comics.length} comic${comics.length !== 1 ? 's' : ''}</div>
+        ${col.description ? `<div class="col-desc">${esc(col.description)}</div>` : ''}
+        <div class="col-actions">
+          <button class="col-btn browse" data-action="browse" data-col="${enc(col.name)}">Browse</button>
+          <button class="col-btn" data-action="edit" data-col="${enc(col.name)}">Edit</button>
+          <button class="col-btn del" data-action="delete" data-col="${enc(col.name)}">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Event delegation ────────────────────────────────────────────────────────
+document.getElementById('colGrid').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action  = btn.dataset.action;
+  const colName = dec(btn.dataset.col);
+
+  if (action === 'browse') {
+    location.href = `/?collection=${encodeURIComponent(colName)}`;
+  } else if (action === 'edit') {
+    editCol(colName);
+  } else if (action === 'delete') {
+    const ok = await CV.confirm(
+      `"${colName}" will be deleted. Comics inside will NOT be deleted.`,
+      'Delete Collection', 'Delete'
+    );
+    if (!ok) return;
+    await fetch(`/api/collections/${encodeURIComponent(colName)}`, { method: 'DELETE' });
+    await load();
+  }
+});
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function enc(s) { return encodeURIComponent(s); }
+function dec(s) { return decodeURIComponent(s); }
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Create / Edit modal ────────────────────────────────────────────────────
+function openModal(name) {
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('colName').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editingName    = null;
+  pickerColName  = null;
+  document.getElementById('colName').value  = '';
+  document.getElementById('colDesc').value  = '';
+  document.getElementById('modalTitle').textContent  = 'New Collection';
+  document.getElementById('saveBtn').textContent     = 'Create';
+  document.getElementById('mangaPickerSearch').value = '';
+}
+
+function editCol(name) {
+  editingName   = name;
+  pickerColName = name;
+  const col     = collections.find(c => c.name === name);
+  document.getElementById('colName').value  = col?.name || name;
+  document.getElementById('colDesc').value  = col?.description || '';
+  document.getElementById('modalTitle').textContent = 'Edit Collection';
+  document.getElementById('saveBtn').textContent    = 'Save';
+  renderPicker('');
+  openModal(name);
+}
+
+document.getElementById('newBtn').addEventListener('click', () => {
+  editingName   = null;
+  pickerColName = '__new__';   // placeholder; real name set on save
+  document.getElementById('modalTitle').textContent = 'New Collection';
+  document.getElementById('saveBtn').textContent    = 'Create';
+  document.getElementById('colName').value  = '';
+  document.getElementById('colDesc').value  = '';
+  renderPicker('');
+  openModal();
+});
+
+async function saveCollection() {
+  const name = document.getElementById('colName').value.trim();
+  const desc = document.getElementById('colDesc').value.trim();
+  if (!name) return;
+
+  await fetch('/api/collections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description: desc }),
+  });
+
+  // If we were using '__new__' as a placeholder, now apply any toggles queued
+  // (None are queued for new collections; the picker uses the live colName input)
+  pickerColName = name;
+  closeModal();
+  await load();
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveCollection);
+document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+document.getElementById('colName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveCollection();
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Manga picker (embedded in modal) ───────────────────────────────────────
+function renderPicker(query) {
+  const list   = document.getElementById('mangaPickerList');
+  const colName = pickerColName;
+
+  let items = seriesComics;
+  if (query) items = items.filter(c => {
+    const title = c._isSeriesProxy ? c._seriesKey : (c.title || '');
+    return title.toLowerCase().includes(query.toLowerCase());
+  });
+
+  if (!items.length) {
+    list.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px;">No comics found</div>';
+    return;
+  }
+
+  list.innerHTML = items.slice(0, 120).map(c => {
+    const title   = c._isSeriesProxy ? c._seriesKey : (c.title || 'Untitled');
+    const inCol   = colName && colName !== '__new__' ? inCollection(c, colName) : false;
+    const cover   = c.cover_path
+      ? (c.cover_path.startsWith('/') ? c.cover_path : `/library/${c.cover_path}`)
+      : '/static/no-cover.svg';
+    const subtitle = c._isSeriesProxy
+      ? `WC Series · ${allLibraryComics.filter(x => (x.series || x.title.replace(/ — Chapter .+$/,'').trim()) === c._seriesKey).length} chapters`
+      : (c.source || '');
+    return `<div class="manga-row">
+      <img src="${cover}" style="width:30px;height:42px;object-fit:cover;border-radius:3px;flex-shrink:0;" onerror="this.src='/static/no-cover.svg'" loading="lazy">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(title)}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">${esc(subtitle)}</div>
+      </div>
+      <button class="manga-row-toggle ${inCol ? 'in' : ''}"
+        data-proxy="${c._isSeriesProxy ? '1' : '0'}"
+        data-key="${esc(c._isSeriesProxy ? c._seriesKey : c.comic_id)}"
+        data-cid="${c.comic_id}"
+        data-in="${inCol ? '1' : '0'}"
+      >${inCol ? '✓ Added' : '+ Add'}</button>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('mangaPickerSearch').addEventListener('input', e => renderPicker(e.target.value));
+
+document.getElementById('mangaPickerList').addEventListener('click', async e => {
+  const btn = e.target.closest('.manga-row-toggle');
+  if (!btn) return;
+
+  // For new collections, we need the name from the input (may not be saved yet)
+  let colName = pickerColName;
+  if (!colName || colName === '__new__') {
+    colName = document.getElementById('colName').value.trim();
+    if (!colName) { toast('Please enter a collection name first', 'error'); return; }
+    // Auto-create the collection so we can add to it
+    await fetch('/api/collections', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: colName, description: '' }),
+    });
+    pickerColName = colName;
+    // Refresh collections list so the new collection appears in render()
+    const colRefresh = await fetch('/api/collections');
+    collections = (await colRefresh.json()).collections;
+  }
+
+  const isProxy  = btn.dataset.proxy === '1';
+  const inCol    = btn.dataset.in === '1';
+  const key      = btn.dataset.key;
+  const singleId = btn.dataset.cid;
+
+  // Get all IDs to toggle
+  let ids;
+  if (isProxy) {
+    ids = allLibraryComics
+      .filter(c => (c.series || c.title.replace(/ — Chapter .+$/,'').trim()) === key)
+      .map(c => c.comic_id);
+  } else {
+    ids = [singleId];
+  }
+
+  if (inCol) {
+    // Remove all
+    await Promise.all(ids.map(id =>
+      fetch(`/api/comic/${id}/collection/${encodeURIComponent(colName)}`, { method: 'DELETE' })
+    ));
+    btn.dataset.in = '0'; btn.textContent = '+ Add'; btn.classList.remove('in');
+    // Update local state
+    allLibraryComics.forEach(c => {
+      if (ids.includes(c.comic_id)) c.collections = (c.collections || []).filter(n => n !== colName);
+    });
+  } else {
+    // Add all
+    await Promise.all(ids.map(id =>
+      fetch(`/api/comic/${id}/collection`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: colName }),
+      })
+    ));
+    btn.dataset.in = '1'; btn.textContent = '✓ Added'; btn.classList.add('in');
+    allLibraryComics.forEach(c => {
+      if (ids.includes(c.comic_id)) {
+        c.collections = c.collections || [];
+        if (!c.collections.includes(colName)) c.collections.push(colName);
+      }
+    });
+  }
+
+  // Refresh byCol and counter — re-fetch library to get server-confirmed state
+  try {
+    const libR = await fetch('/api/library');
+    allLibraryComics = (await libR.json()).comics;
+  } catch {}
+  const byCol = buildByCol();
+  render(byCol);
+});
+
+load();
+</script>
+
+<!-- Toast stack for notifications -->
+<div id="cvToastStack" style="position:fixed;bottom:24px;right:24px;z-index:9000;display:flex;flex-direction:column;gap:8px;pointer-events:none;"></div>
+
+<script>
+function toast(msg, type='info') {
+  const s = document.getElementById('cvToastStack');
+  const el = document.createElement('div');
+  el.style.cssText = `background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 18px;font-size:13px;display:flex;align-items:center;gap:10px;animation:cvSlideIn .25s ease;min-width:220px;pointer-events:auto;border-left:3px solid ${type==='error'?'var(--accent)':type==='success'?'var(--green)':'var(--dim)'};`;
+  el.textContent = msg;
+  if (!document.getElementById('cvToastStyle')) {
+    const st = document.createElement('style');
+    st.id = 'cvToastStyle';
+    st.textContent = '@keyframes cvSlideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}';
+    document.head.appendChild(st);
+  }
+  s.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+</script>
+</body>
+</html>

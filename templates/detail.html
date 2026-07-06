@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComicVault — Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#080810;--bg2:#0f0f1a;--bg3:#161625;--border:#1e1e35;--accent:#e63946;--text:#e8e8f0;--dim:#7a7a9a;--muted:#3a3a5a;--gold:#f4a261;--green:#2dc653;--sw:240px;--r:8px;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size:200px;opacity:.35;}
+  .shell{display:flex;height:100vh;}
+  .sidebar{width:var(--sw);min-width:var(--sw);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;}
+  .logo{padding:22px 20px 16px;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--accent);border-bottom:1px solid var(--border);}
+  .logo small{display:block;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:2px;margin-top:2px;}
+  nav{padding:12px 0;flex:1;overflow-y:auto;}
+  .nav-section{padding:8px 16px 4px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;color:var(--dim);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+  .nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, transparent);}
+  .nav-item svg{width:15px;height:15px;flex-shrink:0;}
+  .nav-badge{background:var(--accent);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;font-family:'IBM Plex Mono',monospace;margin-left:auto;}
+  .sidebar-foot{padding:12px 20px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{display:flex;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+  .topbar-back{display:flex;align-items:center;gap:7px;color:var(--dim);text-decoration:none;font-size:13px;padding:6px 12px;border-radius:var(--r);border:1px solid var(--border);transition:all .15s;}
+  .topbar-back:hover{color:var(--text);border-color:var(--dim);}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;text-decoration:none;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:color-mix(in srgb,var(--accent) 80%,#000);transform:translateY(-1px);}
+  .btn-ghost{background:var(--bg3);color:var(--dim);border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--dim);}
+  .btn-danger{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);}
+  .btn-danger:hover{background:var(--accent);color:#fff;}
+  .btn svg{width:14px;height:14px;}
+  .content{flex:1;overflow-y:auto;padding:32px 28px;}
+  .content::-webkit-scrollbar{width:4px;}
+  .content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+  /* Hero layout */
+  .hero{display:flex;gap:36px;margin-bottom:40px;animation:fadeUp .4s ease both;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .hero-cover{width:220px;flex-shrink:0;}
+  .hero-cover img{width:100%;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:block;background:var(--bg3);}
+  .hero-cover-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+  .hero-info{flex:1;min-width:0;}
+  .hero-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1px;line-height:1.1;margin-bottom:6px;}
+  .hero-title-jp{font-size:13px;color:var(--dim);margin-bottom:16px;font-family:'IBM Plex Mono',monospace;}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+  .meta-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;}
+  .meta-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;font-family:'IBM Plex Mono',monospace;}
+  .meta-value{font-size:14px;font-weight:500;}
+  .meta-value.accent{color:var(--accent);}
+  .meta-value.gold{color:var(--gold);}
+
+  /* Read progress */
+  .progress-section{margin-bottom:20px;}
+  .progress-label{font-size:12px;color:var(--dim);margin-bottom:6px;display:flex;justify-content:space-between;}
+  .progress-bar{height:6px;background:var(--border);border-radius:3px;}
+  .progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s;}
+
+  /* Tags sections */
+  .tags-section{margin-bottom:32px;animation:fadeUp .4s ease .1s both;}
+  .section-title{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+  .tag-group{margin-bottom:16px;}
+  .tag-group-label{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;}
+  .tag-list{display:flex;flex-wrap:wrap;gap:6px;}
+  .tag-chip{padding:4px 10px;border-radius:20px;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .15s;text-decoration:none;}
+  .tag-chip.type-tag{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);}
+  .tag-chip.type-tag:hover{background:var(--accent);color:#fff;}
+  .tag-chip.type-artist{background:rgba(244,162,97,.1);color:var(--gold);border:1px solid rgba(244,162,97,.2);}
+  .tag-chip.type-character{background:rgba(45,198,83,.1);color:var(--green);border:1px solid rgba(45,198,83,.2);}
+  .tag-chip.type-parody{background:rgba(100,150,255,.1);color:#6496ff;border:1px solid rgba(100,150,255,.2);}
+  .tag-chip.type-group{background:rgba(200,100,255,.1);color:#c864ff;border:1px solid rgba(200,100,255,.2);}
+
+  /* Notes */
+  .notes-section{margin-bottom:32px;animation:fadeUp .4s ease .2s both;}
+  .notes-textarea{width:100%;min-height:80px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:12px;font-size:13px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;transition:border-color .2s;}
+  .notes-textarea:focus{border-color:var(--accent);}
+
+  /* Source + actions */
+  .actions-row{display:flex;gap:10px;flex-wrap:wrap;animation:fadeUp .4s ease .15s both;}
+
+  /* Confirm dialog */
+  .confirm-overlay{position:fixed;inset:0;z-index:200;background:rgba(8,8,16,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .confirm-overlay.open{opacity:1;pointer-events:all;}
+  .confirm-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px 32px;max-width:380px;text-align:center;}
+  .confirm-box h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--accent);margin-bottom:8px;}
+  .confirm-box p{font-size:13px;color:var(--dim);margin-bottom:20px;}
+  .confirm-btns{display:flex;gap:10px;justify-content:center;}
+
+  /* Toast */
+  .toast-stack{position:fixed;bottom:24px;right:24px;z-index:9000;display:flex;flex-direction:column;gap:8px;}
+  .toast{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px 18px;font-size:13px;display:flex;align-items:center;gap:10px;animation:slideIn .25s ease;min-width:240px;}
+  .toast.success{border-left:3px solid var(--green);}
+  .toast.error{border-left:3px solid var(--accent);}
+  @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+  .loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:12px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+{% include '_theme_init.html' %}
+</head>
+<body>
+<div class="shell">
+  {% include '_nav.html' %}
+
+  <div class="main">
+    <div class="topbar">
+      <a href="/" class="topbar-back">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M15 18l-6-6 6-6"/></svg>
+        Library
+      </a>
+      <span id="topTitle" style="font-size:14px;font-weight:500;color:var(--dim);">Loading…</span>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-ghost" id="favBtn">☆ Favorite</button>
+        <a class="btn btn-primary" id="readBtn" href="#">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+          Read
+        </a>
+      </div>
+    </div>
+
+    <div class="content" id="mainContent">
+      <div class="loading"><div class="spinner"></div>Loading metadata…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3>Delete Manga?</h3>
+    <p>This will permanently remove all downloaded pages and metadata from your library. This cannot be undone.</p>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="document.getElementById('confirmOverlay').classList.remove('open')">Cancel</button>
+      <button class="btn btn-danger" id="confirmDelete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script>
+const GALLERY_ID = "{{ comic_id }}";
+const IS_SERIES_VIEW = new URLSearchParams(location.search).get('series') === '1';
+let mangaData = null;
+
+async function load() {
+  const [r, settingsR] = await Promise.all([
+    fetch(`/api/comic/${GALLERY_ID}`),
+    fetch('/api/settings'),
+  ]);
+  if (!r.ok) { document.getElementById('mainContent').innerHTML = '<div class="loading">Manga not found.</div>'; return; }
+  mangaData = await r.json();
+  const cfg = await settingsR.json().catch(() => ({}));
+
+  // If ?series=1 and this comic belongs to a series, show full series view
+  if (IS_SERIES_VIEW && mangaData.series) {
+    await renderSeriesView(mangaData, cfg);
+  } else {
+    render(mangaData, cfg);
+  }
+}
+
+async function renderSeriesView(m, cfg) {
+  const seriesKey = m.series;
+  document.title = `${seriesKey} — Series — ComicVault`;
+  document.getElementById('topTitle').textContent = seriesKey;
+  document.getElementById('readBtn').href = `/reader/${GALLERY_ID}`;
+
+  // Fetch all chapters of this series
+  let chapters = [];
+  try {
+    const r = await fetch(`/api/library/series/${encodeURIComponent(seriesKey)}/chapters`);
+    if (r.ok) { const d = await r.json(); chapters = d.chapters || []; }
+  } catch {}
+  if (!chapters.length) chapters = [m];
+
+  // Aggregate metadata from all chapters
+  const allTags = [...new Set(chapters.flatMap(c => c.tags || []))];
+  const allArtists = [...new Set(chapters.flatMap(c => c.artists || c.authors || []))];
+  const allChars = [...new Set(chapters.flatMap(c => c.characters || []))];
+  const allParodies = [...new Set(chapters.flatMap(c => c.parodies || []))];
+  const allGroups = [...new Set(chapters.flatMap(c => c.groups || []))];
+  const bestRating = Math.max(...chapters.map(c => c.rating || 0));
+  const totalPages = chapters.reduce((s, c) => s + (c.page_count || 0), 0);
+  const coverSrc = m.cover_path
+    ? (m.cover_path.startsWith('/') ? m.cover_path : `/library/${m.cover_path}`)
+    : '/static/no-cover.svg';
+
+  const tagGroupsHTML = [
+    { label: 'Tags',       type: 'type-tag',       items: allTags },
+    { label: 'Artists',    type: 'type-artist',    items: allArtists },
+    { label: 'Characters', type: 'type-character', items: allChars },
+    { label: 'Parodies',   type: 'type-parody',    items: allParodies },
+    { label: 'Groups',     type: 'type-group',     items: allGroups },
+  ].filter(g => g.items.length).map(g => `
+    <div class="tag-group">
+      <div class="tag-group-label">${g.label}</div>
+      <div class="tag-list">
+        ${g.items.map(t => `<a href="/?tag=${encodeURIComponent(t)}" class="tag-chip ${g.type}">${t}</a>`).join('')}
+      </div>
+    </div>`).join('');
+
+  // Sort chapters by chapter number
+  const sortedChapters = [...chapters].sort((a, b) => {
+    const na = parseFloat(a.chapter) || 0, nb = parseFloat(b.chapter) || 0;
+    return na - nb;
+  });
+
+  const chaptersHTML = sortedChapters.map(c => {
+    const pct = c.page_count > 0 ? Math.round((c.read_page || 0) / c.page_count * 100) : 0;
+    return `
+      <a href="/reader/${c.comic_id}" style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);text-decoration:none;color:var(--text);transition:border-color .15s;margin-bottom:6px;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);min-width:80px;">Ch. ${c.chapter || '?'}</div>
+        <div style="flex:1;font-size:13px;">${c.title || 'Chapter ' + (c.chapter || '?')}</div>
+        <div style="font-size:11px;color:var(--dim);font-family:'IBM Plex Mono',monospace;min-width:60px;text-align:right;">${c.page_count || 0}p</div>
+        <div style="min-width:70px;">
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:2px;"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);text-align:right;margin-top:2px;font-family:'IBM Plex Mono',monospace;">${pct}%</div>
+        </div>
+      </a>`;
+  }).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="hero">
+      <div class="hero-cover">
+        <img src="${coverSrc}" onerror="this.src='/static/no-cover.svg'" alt="Cover">
+        <div class="hero-cover-actions">
+          <a class="btn btn-primary" href="/reader/${GALLERY_ID}" style="justify-content:center;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Continue Reading
+          </a>
+          <a class="btn btn-ghost" href="${m.source_url}" target="_blank" rel="noopener" style="justify-content:center;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            Source
+          </a>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Series</div>
+        <div class="hero-title">${seriesKey}</div>
+        <div class="meta-grid" style="margin-top:16px;">
+          <div class="meta-item">
+            <div class="meta-label">Chapters</div>
+            <div class="meta-value accent">${chapters.length}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Total Pages</div>
+            <div class="meta-value">${totalPages}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Language</div>
+            <div class="meta-value gold">${m.language || '—'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Rating</div>
+            <div id="seriesRatingStars" style="display:flex;gap:6px;margin-top:4px;">
+              ${[1,2,3,4,5].map(n => `<span data-r="${n}" style="cursor:pointer;font-size:20px;color:${Math.round(bestRating)>=n?'var(--gold)':'var(--border)'};" onclick="setSeriesRating(${n}, chapters)">★</span>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tags-section">
+      <div class="section-title">Tags & Metadata</div>
+      ${tagGroupsHTML || '<p style="color:var(--muted);font-size:13px;">No tags available.</p>'}
+    </div>
+
+    <div class="tags-section">
+      <div class="section-title" style="margin-bottom:12px;">Chapters (${chapters.length})</div>
+      ${chaptersHTML}
+    </div>
+  `;
+
+  // Store chapters reference for rating
+  window._seriesChapters = chapters;
+}
+
+function render(m, cfg) {
+  document.title = `${m.title} — ComicVault`;
+  document.getElementById('topTitle').textContent = m.title || 'Untitled';
+  document.getElementById('readBtn').href = `/reader/${m.comic_id}`;
+
+  // Fav button
+  const favBtn = document.getElementById('favBtn');
+  favBtn.textContent = m.favorite ? '★ Favorited' : '☆ Favorite';
+  favBtn.style.color = m.favorite ? 'var(--gold)' : '';
+  favBtn.onclick = async () => {
+    const r = await fetch(`/api/comic/${m.comic_id}/favorite`, {method:'POST'});
+    const d = await r.json();
+    favBtn.textContent = d.favorite ? '★ Favorited' : '☆ Favorite';
+    favBtn.style.color = d.favorite ? 'var(--gold)' : '';
+    toast(d.favorite ? 'Added to favorites' : 'Removed from favorites', 'success');
+  };
+
+  const readPct = m.page_count > 0 ? Math.round(m.read_page / m.page_count * 100) : 0;
+  const uploadDateRaw = m.upload_date;
+  let uploadDate = '—';
+  if (uploadDateRaw) {
+    // Could be unix timestamp or ISO string
+    const ts = parseInt(uploadDateRaw);
+    if (!isNaN(ts) && ts > 1000000) {
+      uploadDate = new Date(ts * 1000).toLocaleDateString();
+    } else if (uploadDateRaw.includes('-') || uploadDateRaw.includes('T')) {
+      uploadDate = new Date(uploadDateRaw).toLocaleDateString();
+    } else {
+      uploadDate = uploadDateRaw;
+    }
+  }
+  const addedDate = m.date_added ? new Date(m.date_added).toLocaleDateString() : '—';
+  const coverSrc = m.cover_path ? (m.cover_path.startsWith('/') ? m.cover_path : `/library/${m.cover_path}`) : '/static/no-cover.svg';
+
+  // Build tag groups
+  const tagGroups = [
+    { key: 'tags',       label: 'Tags',       type: 'type-tag',       items: m.tags },
+    { key: 'artists',    label: 'Artists',    type: 'type-artist',    items: m.artists },
+    { key: 'characters', label: 'Characters', type: 'type-character', items: m.characters },
+    { key: 'parodies',   label: 'Parodies',   type: 'type-parody',    items: m.parodies },
+    { key: 'groups',     label: 'Groups',     type: 'type-group',     items: m.groups },
+  ].filter(g => g.items && g.items.length);
+
+  const tagGroupsHTML = tagGroups.map(g => `
+    <div class="tag-group">
+      <div class="tag-group-label">${g.label}</div>
+      <div class="tag-list">
+        ${g.items.map(t => `<a href="/?tag=${encodeURIComponent(t)}" class="tag-chip ${g.type}">${t}</a>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // isChapter needed inside the template below
+  const isChapter = !!(m.series || m.chapter);
+  document.getElementById('mainContent').innerHTML = `
+    <div class="hero">
+      <div class="hero-cover">
+        <img src="${coverSrc}" onerror="this.src='/static/no-cover.svg'" alt="Cover">
+        <div class="hero-cover-actions">
+          <a class="btn btn-primary" href="/reader/${m.comic_id}" style="justify-content:center;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            ${m.read_page > 0 ? `Continue (p.${m.read_page + 1})` : 'Start Reading'}
+          </a>
+          <a class="btn btn-ghost" href="${m.source_url}" target="_blank" rel="noopener" style="justify-content:center;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            Source
+          </a>
+          <button class="btn btn-danger" id="deleteBtn" style="justify-content:center;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-title">${m.title || 'Untitled'}</div>
+        ${m.title_jp ? `<div class="hero-title-jp">${m.title_jp}</div>` : ''}
+
+        <div class="progress-section">
+          <div class="progress-label">
+            <span>Reading Progress</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)">${m.read_page}/${m.page_count} pages · ${readPct}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${readPct}%"></div></div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="meta-label">Gallery ID</div>
+            <div class="meta-value accent">#${m.comic_id}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Language</div>
+            <div class="meta-value gold">${m.language || '—'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Pages</div>
+            <div class="meta-value">${m.page_count}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">File Size</div>
+            <div class="meta-value">${m.file_size_mb ? m.file_size_mb + ' MB' : '—'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Uploaded</div>
+            <div class="meta-value">${uploadDate}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Added</div>
+            <div class="meta-value">${addedDate}</div>
+          </div>
+          <div class="meta-item" style="grid-column:1/-1;">
+            <div class="meta-label">Rating</div>
+            ${isChapter
+              ? `<div style="font-size:12px;color:var(--muted);">Rate via the series view — <a href="/" style="color:var(--accent);">return to library</a></div>`
+              : `<div id="ratingStars" style="display:flex;gap:6px;margin-top:4px;">
+                  ${[1,2,3,4,5].map(n=>`<span data-r="${n}" style="cursor:pointer;font-size:20px;color:${Math.round(m.rating||0)>=n?'var(--gold)':'var(--border)'};" title="${n} star${n>1?'s':''}" onclick="setRating(${n})">★</span>`).join('')}
+                </div>`
+            }
+          </div>
+          ${isChapter && m.series ? `<div class="meta-item" style="grid-column:1/-1;">
+            <div class="meta-label">Part of Series</div>
+            <div class="meta-value" style="color:var(--accent);">${m.series}</div>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="tags-section">
+      <div class="section-title">Tags & Metadata</div>
+      ${tagGroupsHTML || '<p style="color:var(--muted);font-size:13px;">No tags available.</p>'}
+    </div>
+
+    <div class="notes-section">
+      <div class="section-title">Collections</div>
+      <div id="collectionChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+        ${(m.collections||[]).map(col => `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;font-size:11px;background:rgba(100,150,255,.12);color:#6496ff;border:1px solid rgba(100,150,255,.25);font-family:'IBM Plex Mono',monospace;">${col}<button onclick="removeFromCol('${m.comic_id}','${col.replace(/'/g,"\\'")}',this.parentElement)" style="background:none;border:none;color:#6496ff;cursor:pointer;padding:0 0 0 4px;font-size:13px;line-height:1;">×</button></span>`).join('') || '<span style="color:var(--muted);font-size:12px;">Not in any collection</span>'}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="colSelect" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:7px 12px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;flex:1;">
+          <option value="">— Select collection —</option>
+        </select>
+        <button class="btn btn-ghost" onclick="addToSelectedCol()">Add</button>
+      </div>
+    </div>
+
+    <div class="notes-section">
+      <div class="section-title">Personal Notes</div>
+      <textarea class="notes-textarea" id="notesArea" placeholder="Add your personal notes here…">${m.notes || ''}</textarea>
+      <button class="btn btn-ghost" id="saveNotes" style="margin-top:8px;">Save Notes</button>
+    </div>
+  `;
+
+  // Delete
+  document.getElementById('deleteBtn').onclick = () => document.getElementById('confirmOverlay').classList.add('open');
+  document.getElementById('confirmDelete').onclick = async () => {
+    await fetch(`/api/comic/${m.comic_id}`, {method:'DELETE'});
+    toast('Manga deleted', 'success');
+    setTimeout(() => location.href = '/', 1000);
+  };
+
+  // Save notes
+  document.getElementById('saveNotes').onclick = async () => {
+    const notes = document.getElementById('notesArea').value;
+    await fetch(`/api/comic/${m.comic_id}/notes`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({notes})});
+    toast('Notes saved', 'success');
+  };
+
+  // Load collections for dropdown
+  fetch('/api/collections').then(r=>r.json()).then(d => {
+    const sel = document.getElementById('colSelect');
+    if (!sel) return;
+    d.collections.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name; opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+async function addToSelectedCol() {
+  const sel = document.getElementById('colSelect');
+  if (!sel || !sel.value) { toast('Select a collection first', 'error'); return; }
+  const colName = sel.value;
+  await fetch(`/api/comic/${GALLERY_ID}/collection`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: colName})});
+  toast(`Added to "${colName}"`, 'success');
+  // Add chip
+  const chips = document.getElementById('collectionChips');
+  // Remove "not in any" placeholder if present
+  chips.querySelectorAll('span').forEach(s => { if (s.textContent.includes('Not in any')) s.remove(); });
+  const chip = document.createElement('span');
+  chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;font-size:11px;background:rgba(100,150,255,.12);color:#6496ff;border:1px solid rgba(100,150,255,.25);font-family:"IBM Plex Mono",monospace;';
+  chip.innerHTML = `${colName}<button onclick="removeFromCol('${GALLERY_ID}','${colName.replace(/'/g,"\\'")}',this.parentElement)" style="background:none;border:none;color:#6496ff;cursor:pointer;padding:0 0 0 4px;font-size:13px;line-height:1;">×</button>`;
+  chips.appendChild(chip);
+}
+
+async function removeFromCol(comicId, colName, chipEl) {
+  await fetch(`/api/comic/${comicId}/collection/${encodeURIComponent(colName)}`, {method:'DELETE'});
+  if (chipEl) chipEl.remove();
+  toast(`Removed from "${colName}"`, 'success');
+  const chips = document.getElementById('collectionChips');
+  if (chips && !chips.children.length) {
+    chips.innerHTML = '<span style="color:var(--muted);font-size:12px;">Not in any collection</span>';
+  }
+}
+
+function toast(msg, type='info') {
+  const s = document.getElementById('toastStack');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  s.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+async function setRating(r) {
+  await fetch(`/api/comic/${GALLERY_ID}/rating`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({rating: r})
+  });
+  document.querySelectorAll('#ratingStars span').forEach((s,i) => {
+    s.style.color = i < r ? 'var(--gold)' : 'var(--border)';
+  });
+  toast(`Rated ${r}\u2605`, 'success');
+}
+
+async function setSeriesRating(r, chapters) {
+  const chapterList = window._seriesChapters || [];
+  await Promise.all(chapterList.map(c =>
+    fetch(`/api/comic/${c.comic_id}/rating`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({rating: r})
+    })
+  ));
+  document.querySelectorAll('#seriesRatingStars span').forEach((s,i) => {
+    s.style.color = i < r ? 'var(--gold)' : 'var(--border)';
+  });
+  toast(`Rated series ${r}\u2605`, 'success');
+}
+
+document.getElementById('confirmOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+// Set Read href immediately so it works even while metadata loads
+document.getElementById('readBtn').href = `/reader/${GALLERY_ID}`;
+
+load();
+</script>
+<script>
+(function(){
+  function _cb(){
+    const ws=new WebSocket('ws://'+location.host+'/ws/downloads');
+    ws.onmessage=function(e){
+      const d=JSON.parse(e.data);
+      const n=d.jobs.filter(function(j){return['downloading','queued','scraping','processing'].includes(j.status);}).length;
+      const b=document.getElementById('dlBadge');
+      if(!b)return;
+      b.style.display=n?'inline':'none';
+      if(n)b.textContent=n;
+    };
+    ws.onclose=function(){setTimeout(_cb,3000);};
+  }
+  _cb();
+})();
+</script>
+</body>
+</html>

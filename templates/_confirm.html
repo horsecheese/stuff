@@ -1,0 +1,106 @@
+{# _confirm.html — drop-in styled confirm/alert modal                            #}
+{# Include once in <body>. Use: CV.confirm('msg', 'title?').then(ok => {...})    #}
+<div id="cv-confirm-overlay" style="
+  position:fixed;inset:0;z-index:9000;
+  background:rgba(8,8,16,.85);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .18s;
+">
+  <div id="cv-confirm-box" style="
+    background:var(--bg2);border:1px solid var(--border);
+    border-radius:14px;padding:28px 32px;width:420px;max-width:92vw;
+    transform:scale(.96) translateY(8px);transition:transform .18s;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);
+  ">
+    <div id="cv-confirm-title" style="
+      font-family:'Bebas Neue',sans-serif;font-size:20px;
+      letter-spacing:2px;color:var(--text);margin-bottom:10px;
+    "></div>
+    <div id="cv-confirm-msg" style="
+      font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:22px;
+    "></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button id="cv-confirm-cancel" style="
+        padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;
+        cursor:pointer;border:1px solid var(--border);background:var(--bg3);
+        color:var(--dim);font-family:'DM Sans',sans-serif;transition:all .15s;
+      " onmouseenter="this.style.color='var(--text)';this.style.borderColor='var(--dim)'"
+         onmouseleave="this.style.color='var(--dim)';this.style.borderColor='var(--border)'">
+        Cancel
+      </button>
+      <button id="cv-confirm-ok" style="
+        padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;
+        cursor:pointer;border:none;background:var(--accent);
+        color:#fff;font-family:'DM Sans',sans-serif;transition:all .15s;
+      " onmouseenter="this.style.filter='brightness(1.15)'"
+         onmouseleave="this.style.filter=''">
+        Confirm
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.CV = window.CV || {};
+CV.confirm = function(msg, title, okLabel) {
+  return new Promise(function(resolve) {
+    var ov  = document.getElementById('cv-confirm-overlay');
+    var box = document.getElementById('cv-confirm-box');
+    var tEl = document.getElementById('cv-confirm-title');
+    var mEl = document.getElementById('cv-confirm-msg');
+    var okB = document.getElementById('cv-confirm-ok');
+    var cnB = document.getElementById('cv-confirm-cancel');
+
+    tEl.textContent = title || 'Confirm';
+    mEl.textContent = msg;
+    okB.textContent = okLabel || 'Confirm';
+
+    ov.style.opacity = '1';
+    ov.style.pointerEvents = 'all';
+    box.style.transform = 'scale(1) translateY(0)';
+
+    function close(result) {
+      ov.style.opacity = '0';
+      ov.style.pointerEvents = 'none';
+      box.style.transform = 'scale(.96) translateY(8px)';
+      okB.onclick = null; cnB.onclick = null; ov.onclick = null;
+      resolve(result);
+    }
+
+    okB.onclick  = function() { close(true); };
+    cnB.onclick  = function() { close(false); };
+    ov.onclick   = function(e) { if (e.target === ov) close(false); };
+  });
+};
+
+CV.alert = function(msg, title) {
+  return new Promise(function(resolve) {
+    var ov  = document.getElementById('cv-confirm-overlay');
+    var box = document.getElementById('cv-confirm-box');
+    var tEl = document.getElementById('cv-confirm-title');
+    var mEl = document.getElementById('cv-confirm-msg');
+    var okB = document.getElementById('cv-confirm-ok');
+    var cnB = document.getElementById('cv-confirm-cancel');
+
+    tEl.textContent = title || 'Notice';
+    mEl.textContent = msg;
+    okB.textContent = 'OK';
+    cnB.style.display = 'none';
+
+    ov.style.opacity = '1';
+    ov.style.pointerEvents = 'all';
+    box.style.transform = 'scale(1) translateY(0)';
+
+    function close() {
+      ov.style.opacity = '0';
+      ov.style.pointerEvents = 'none';
+      box.style.transform = 'scale(.96) translateY(8px)';
+      cnB.style.display = '';
+      okB.onclick = null; ov.onclick = null;
+      resolve();
+    }
+    okB.onclick = close;
+    ov.onclick  = function(e) { if (e.target === ov) close(); };
+  });
+};
+</script>

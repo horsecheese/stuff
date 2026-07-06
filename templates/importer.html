@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComicVault — Importer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+{% include '_shared_css.html' %}
+
+.source-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:28px;}
+.stab{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--dim);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:'DM Sans',sans-serif;}
+.stab:hover{color:var(--text);}
+.stab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.stab-panel{display:none;}
+.stab-panel.active{display:block;}
+
+.import-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:20px;}
+.import-card-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;font-family:'IBM Plex Mono',monospace;}
+.import-card p{font-size:13px;color:var(--dim);margin-bottom:12px;line-height:1.6;}
+
+.method-group{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:3px;margin-bottom:12px;gap:3px;}
+.method-btn{flex:1;padding:7px;border-radius:5px;border:none;background:transparent;color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;}
+.method-btn.active{background:var(--accent);color:#fff;}
+.method-btn:not(.active):hover{background:rgba(255,255,255,.05);color:var(--text);}
+
+.result-msg{margin-top:10px;font-size:11px;font-family:'IBM Plex Mono',monospace;}
+.result-ok{color:var(--green);}
+.result-err{color:var(--accent);}
+
+.dropzone{border:2px dashed var(--border);border-radius:var(--r);padding:36px;text-align:center;cursor:pointer;transition:all .2s;color:var(--dim);}
+.dropzone:hover,.dropzone.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 4%,transparent);color:var(--text);}
+.dropzone svg{width:36px;height:36px;margin:0 auto 12px;display:block;opacity:.35;}
+.dropzone p{font-size:13px;}
+.dropzone small{font-size:11px;color:var(--muted);}
+.file-list{margin-top:10px;display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto;}
+.file-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--dim);display:flex;justify-content:space-between;}
+.file-item.ok{border-color:rgba(45,198,83,.3);color:var(--green);}
+.file-item.err{border-color:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent);}
+
+/* WeebCentral */
+.series-preview{display:none;}
+.series-header{display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;}
+.series-cover{width:80px;height:112px;object-fit:cover;border-radius:var(--r);background:var(--bg3);flex-shrink:0;}
+.series-title{font-size:16px;font-weight:600;margin-bottom:4px;}
+.series-meta{font-size:11px;color:var(--dim);font-family:'IBM Plex Mono',monospace;line-height:1.8;}
+.series-desc{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.6;max-height:80px;overflow:hidden;}
+.chapter-controls{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.chapter-count{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-left:auto;}
+.chapter-list{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);}
+.chapter-list::-webkit-scrollbar{width:4px;}
+.chapter-list::-webkit-scrollbar-thumb{background:var(--border);}
+.chapter-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.chapter-item:last-child{border-bottom:none;}
+.chapter-item:hover{background:rgba(255,255,255,.02);}
+.chapter-item.selected{background:color-mix(in srgb,var(--accent) 6%,transparent);}
+.chapter-cb{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.chapter-num{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--accent);min-width:80px;}
+.chapter-name{font-size:12px;color:var(--dim);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chapter-import-bar{margin-top:14px;display:flex;gap:8px;align-items:center;}
+
+/* Guide box */
+.guide-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;}
+.guide-box h4{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.guide-step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;font-size:12px;color:var(--dim);line-height:1.55;}
+.guide-step:last-child{margin-bottom:0;}
+.guide-num{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.guide-step code{font-family:'IBM Plex Mono',monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:3px;font-size:11px;color:var(--text);}
+</style>
+{% include '_theme_init.html' %}
+</head>
+<body>
+<div class="shell">
+  {% include '_nav.html' %}
+  <div class="main">
+    <div class="topbar"><h1>IMPORTER</h1></div>
+    <div class="content">
+
+      <div class="source-tabs">
+        <button class="stab active" data-tab="nhentai">nhentai</button>
+        <button class="stab" data-tab="nh-favorites">★ NH Favorites</button>
+        <button class="stab" data-tab="weebcentral">Weeb Central</button>
+        <button class="stab" data-tab="cbz">Local Files (CBZ)</button>
+      </div>
+
+      <!-- ── nhentai ───────────────────────────────────────────────────────── -->
+      <div class="stab-panel active" id="tab-nhentai">
+        <div class="import-card">
+          <div class="import-card-title">nhentai Gallery Import</div>
+          <p>Paste nhentai gallery URLs or numeric IDs, one per line.</p>
+
+          <div style="font-size:11px;color:var(--dim);margin-bottom:6px;">Download Method</div>
+          <div class="method-group">
+            <button class="method-btn active" data-method="scrape">🔍 Scrape &nbsp;—&nbsp; No login needed</button>
+            <button class="method-btn" data-method="download">⬇ Direct Download &nbsp;—&nbsp; Needs API key</button>
+          </div>
+          <input class="field-input" id="nhentaiApiKey" placeholder="API Key (required for Direct Download only)" style="display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+          <textarea class="field-textarea" id="nhentaiUrls" placeholder="https://nhentai.net/g/177013/&#10;362493&#10;https://nhentai.net/g/261297/" style="height:130px;"></textarea>
+          <button class="btn btn-primary" id="nhentaiImportBtn">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Queue Import
+          </button>
+          <div id="nhentaiResult" class="result-msg"></div>
+        </div>
+      </div>
+
+      <!-- ── nhentai Favorites ─────────────────────────────────────────────── -->
+      <div class="stab-panel" id="tab-nh-favorites">
+        <div class="import-card">
+          <div class="import-card-title">nhentai Favorites Import</div>
+          <p>Enter your nhentai <strong style="color:var(--text)">API key</strong> to fetch and queue all your favorited galleries automatically — no cookies or browser extensions needed.</p>
+
+          <div class="guide-box">
+            <h4>How to get your API key</h4>
+            <div class="guide-step"><div class="guide-num">1</div><span>Open <strong style="color:var(--text)">nhentai.net</strong> and log in.</span></div>
+            <div class="guide-step"><div class="guide-num">2</div><span>Press <code>F12</code> → <strong style="color:var(--text)">Application</strong> tab → <strong style="color:var(--text)">Cookies</strong> → <code>nhentai.net</code>.</span></div>
+            <div class="guide-step"><div class="guide-num">3</div><span>Copy the value of the <code>access_token</code> cookie — that is your API key.</span></div>
+          </div>
+
+          <input class="field-input" id="nhFavApiKey" placeholder="Paste your nhentai access_token here" style="font-family:'IBM Plex Mono',monospace;font-size:12px;margin-bottom:10px;">
+
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
+            <label style="font-size:12px;color:var(--dim);white-space:nowrap;">Max pages to scan:</label>
+            <input type="number" id="nhFavMaxPages" value="50" min="1" max="500" style="width:72px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:5px 8px;font-size:12px;outline:none;">
+            <span style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">(25 favorites per page)</span>
+          </div>
+
+          <div style="font-size:11px;color:var(--dim);margin-bottom:6px;">Gallery Download Method</div>
+          <div class="method-group">
+            <button class="method-btn active" data-fav-method="scrape">🔍 Scrape each gallery</button>
+            <button class="method-btn" data-fav-method="download">⬇ Direct Download (API key)</button>
+          </div>
+
+          <button class="btn btn-primary" id="nhFavImportBtn" style="margin-top:12px;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            Import Favorites
+          </button>
+          <div id="nhFavResult" class="result-msg" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+            <!-- ── Weeb Central ──────────────────────────────────────────────────── -->
+      <div class="stab-panel" id="tab-weebcentral">
+        <div class="import-card">
+          <div class="import-card-title">Weeb Central Series Import</div>
+          <p>Paste a Weeb Central series URL to preview the chapter list, then select which chapters to queue.</p>
+          <div style="display:flex;gap:8px;margin-bottom:0;">
+            <input class="field-input" id="wcUrl" placeholder="https://weebcentral.com/series/…" style="margin-bottom:0;flex:1;">
+            <button class="btn btn-ghost" id="wcPreviewBtn" style="flex-shrink:0;">Preview</button>
+          </div>
+          <div id="wcResult" class="result-msg" style="margin-bottom:10px;"></div>
+        </div>
+
+        <div class="series-preview import-card" id="wcPreview">
+          <div class="series-header">
+            <img class="series-cover" id="wcCover" src="" alt="">
+            <div class="series-info">
+              <div class="series-title" id="wcTitle"></div>
+              <div class="series-meta" id="wcMeta"></div>
+              <div class="series-desc" id="wcDesc"></div>
+            </div>
+          </div>
+          <div class="chapter-controls">
+            <button class="btn btn-ghost btn-sm" id="selectAll">Select All</button>
+            <button class="btn btn-ghost btn-sm" id="selectNone">Select None</button>
+            <button class="btn btn-ghost btn-sm" id="selectFirst10">First 10</button>
+            <button class="btn btn-ghost btn-sm" id="selectLast10">Last 10</button>
+            <span class="chapter-count" id="chapterCount">0 chapters</span>
+          </div>
+          <div class="chapter-list" id="chapterList"></div>
+          <div class="chapter-import-bar">
+            <span id="selCount" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">0 selected</span>
+            <button class="btn btn-primary" id="wcImportBtn" style="margin-left:auto;" disabled>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Queue Selected Chapters
+            </button>
+          </div>
+          <div id="wcImportResult" class="result-msg" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <!-- ── CBZ / Local Files ─────────────────────────────────────────────── -->
+      <div class="stab-panel" id="tab-cbz">
+        <div class="import-card">
+          <div class="import-card-title">Local CBZ / ZIP Import</div>
+          <p>Drop .cbz or .zip files below, or click to browse. Metadata will be extracted from the filename and embedded ComicInfo.xml if present.</p>
+          <div class="dropzone" id="dropzone">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <p>Drop CBZ / ZIP files here</p>
+            <small>or click to browse</small>
+          </div>
+          <input type="file" id="cbzInput" accept=".cbz,.zip,.cbr" multiple style="display:none">
+          <div class="file-list" id="cbzFileList"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.stab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.stab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ── nhentai gallery import ────────────────────────────────────────────────────
+let nhMethod = 'scrape';
+
+document.querySelectorAll('[data-method]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-method]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    nhMethod = btn.dataset.method;
+    document.getElementById('nhentaiApiKey').style.display = nhMethod === 'download' ? '' : 'none';
+  });
+});
+
+document.getElementById('nhentaiImportBtn').addEventListener('click', async () => {
+  const urls    = document.getElementById('nhentaiUrls').value.trim();
+  const api_key = document.getElementById('nhentaiApiKey').value.trim();
+  if (!urls) return;
+  const btn = document.getElementById('nhentaiImportBtn');
+  btn.disabled = true; btn.textContent = 'Queuing…';
+  try {
+    const r = await fetch('/api/import/nhentai', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ urls, method: nhMethod, api_key }),
+    });
+    const d = await r.json();
+    let msg = '';
+    if (d.queued.length)  msg += `<div class="result-ok">✓ Queued ${d.queued.length} gallery${d.queued.length>1?'ies':''}. <a href="/downloads" style="color:var(--green)">View progress →</a></div>`;
+    if (d.errors.length)  msg += d.errors.map(e=>`<div class="result-err">✗ ${esc(e.error)}</div>`).join('');
+    document.getElementById('nhentaiResult').innerHTML = msg || '<div class="result-ok">Done.</div>';
+    if (d.queued.length) document.getElementById('nhentaiUrls').value = '';
+  } catch(e) {
+    document.getElementById('nhentaiResult').innerHTML = `<div class="result-err">✗ ${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Queue Import';
+  }
+});
+
+// ── nhentai Favorites ─────────────────────────────────────────────────────────
+// ── nhentai favorites — API key approach ─────────────────────────────────────
+let favDlMethod = 'scrape';
+document.querySelectorAll('[data-fav-method]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-fav-method]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    favDlMethod = btn.dataset.favMethod;
+  });
+});
+
+document.getElementById('nhFavImportBtn').addEventListener('click', async () => {
+  const apiKey   = document.getElementById('nhFavApiKey').value.trim();
+  const maxPages = parseInt(document.getElementById('nhFavMaxPages').value) || 50;
+  const resultEl = document.getElementById('nhFavResult');
+
+  if (!apiKey) {
+    resultEl.innerHTML = '<span class="result-err">&#9888; Paste your nhentai <code>access_token</code> first — see the guide above.</span>';
+    return;
+  }
+
+  const btn = document.getElementById('nhFavImportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Fetching favorites…';
+  resultEl.innerHTML = '<span style="color:var(--dim)">Contacting nhentai API…</span>';
+
+  try {
+    const r = await fetch('/api/import/nhentai/favorites', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ api_key: apiKey, method: favDlMethod, max_pages: maxPages }),
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({detail: r.statusText}));
+      resultEl.innerHTML = `<span class="result-err">✗ ${esc(err.detail || r.statusText)}</span>`;
+      return;
+    }
+
+    const d = await r.json();
+    const lines = [];
+    if (!d.total_found) {
+      lines.push('<span class="result-err">&#9888; No favorites found — check your API key and try again.</span>');
+    } else {
+      lines.push(`<span class="result-ok">✓ Found ${d.total_found} favorites</span>`);
+      if (d.queued?.length)  lines.push(`<span class="result-ok">⬇ Queued ${d.queued.length} download(s). <a href="/downloads" style="color:var(--green)">View progress →</a></span>`);
+      if (d.skipped?.length) lines.push(`<span style="color:var(--dim)">⏭ Skipped ${d.skipped.length} already in library</span>`);
+      if (d.errors?.length)  lines.push(`<span class="result-err">&#9888; ${d.errors.length} error(s)</span>`);
+    }
+    resultEl.innerHTML = lines.join('<br>');
+  } catch(e) {
+    resultEl.innerHTML = `<span class="result-err">✗ ${esc(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg> Import Favorites';
+  }
+});
+// ── WeebCentral ───────────────────────────────────────────────────────────────
+let wcSeries = null;
+
+async function wcPreview() {
+  const url = document.getElementById('wcUrl').value.trim();
+  if (!url) return;
+  const btn = document.getElementById('wcPreviewBtn');
+  const res = document.getElementById('wcResult');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  res.innerHTML = '';
+  try {
+    const r = await fetch('/api/import/weebcentral/preview', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url}),
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail||'Failed'); }
+    wcSeries = await r.json();
+    renderPreview(wcSeries);
+  } catch(e) {
+    res.innerHTML = `<div class="result-err">✗ ${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Preview';
+  }
+}
+
+function renderPreview(series) {
+  const preview = document.getElementById('wcPreview');
+  preview.style.display = 'block';
+  document.getElementById('wcCover').src = series.cover_url || '';
+  document.getElementById('wcTitle').textContent = series.title || 'Unknown Title';
+  const parts = [];
+  if ((series.authors||[]).length) parts.push(`Author: ${series.authors.join(', ')}`);
+  if ((series.artists||[]).length) parts.push(`Artist: ${series.artists.join(', ')}`);
+  if (series.language)             parts.push(`Language: ${series.language}`);
+  if ((series.genres||[]).length)  parts.push(`Genres: ${series.genres.slice(0,5).join(', ')}`);
+  document.getElementById('wcMeta').innerHTML = parts.join('<br>');
+  document.getElementById('wcDesc').textContent = series.description || '';
+  const chapters = series.chapters || [];
+  document.getElementById('chapterCount').textContent = `${chapters.length} chapter${chapters.length!==1?'s':''}`;
+  const listEl = document.getElementById('chapterList');
+  listEl.innerHTML = chapters.slice().reverse().map((ch, ri) => {
+    const origIndex = chapters.length - 1 - ri;
+    const displayNum = ch.number ? `Chapter ${ch.number}` : `Chapter ${origIndex + 1}`;
+    const displayTitle = ch.title && ch.title !== displayNum ? ch.title : '';
+    return `<div class="chapter-item" data-idx="${origIndex}">
+      <input type="checkbox" class="chapter-cb" data-idx="${origIndex}">
+      <span class="chapter-num">${esc(displayNum)}</span>
+      ${displayTitle ? `<span class="chapter-name">${esc(displayTitle)}</span>` : ''}
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.chapter-item').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.classList.contains('chapter-cb')) return;
+      const cb = row.querySelector('.chapter-cb');
+      cb.checked = !cb.checked;
+      row.classList.toggle('selected', cb.checked);
+      updateSelCount();
+    });
+  });
+  listEl.querySelectorAll('.chapter-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.chapter-item').classList.toggle('selected', cb.checked);
+      updateSelCount();
+    });
+  });
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const sel = document.querySelectorAll('.chapter-cb:checked').length;
+  document.getElementById('selCount').textContent = `${sel} selected`;
+  document.getElementById('wcImportBtn').disabled = sel === 0;
+}
+
+function setAllChecked(val) {
+  document.querySelectorAll('.chapter-cb').forEach(cb => {
+    cb.checked = val;
+    cb.closest('.chapter-item').classList.toggle('selected', val);
+  });
+  updateSelCount();
+}
+
+document.getElementById('wcPreviewBtn').addEventListener('click', wcPreview);
+document.getElementById('wcUrl').addEventListener('keydown', e => { if(e.key==='Enter') wcPreview(); });
+document.getElementById('selectAll').addEventListener('click',   () => setAllChecked(true));
+document.getElementById('selectNone').addEventListener('click',  () => setAllChecked(false));
+document.getElementById('selectFirst10').addEventListener('click', () => {
+  const all = [...document.querySelectorAll('.chapter-item')];
+  const last10 = all.slice(all.length - 10);
+  all.forEach(r => { r.querySelector('.chapter-cb').checked=false; r.classList.remove('selected'); });
+  last10.forEach(r => { r.querySelector('.chapter-cb').checked=true; r.classList.add('selected'); });
+  updateSelCount();
+});
+document.getElementById('selectLast10').addEventListener('click', () => {
+  const all = [...document.querySelectorAll('.chapter-item')];
+  const first10 = all.slice(0, 10);
+  all.forEach(r => { r.querySelector('.chapter-cb').checked=false; r.classList.remove('selected'); });
+  first10.forEach(r => { r.querySelector('.chapter-cb').checked=true; r.classList.add('selected'); });
+  updateSelCount();
+});
+
+document.getElementById('wcImportBtn').addEventListener('click', async () => {
+  if (!wcSeries) return;
+  const selectedIdxs = [...document.querySelectorAll('.chapter-cb:checked')].map(cb => parseInt(cb.dataset.idx));
+  const chapters = wcSeries.chapters || [];
+  const chapter_objects = selectedIdxs.map(i => chapters[i]).filter(Boolean).map(ch => ({
+    url: ch.url, title: ch.title || '', number: ch.number || '',
+  }));
+  if (!chapter_objects.length) return;
+  const btn = document.getElementById('wcImportBtn');
+  btn.disabled = true; btn.textContent = 'Queuing…';
+  try {
+    await fetch('/api/import/weebcentral', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ series_url: document.getElementById('wcUrl').value.trim(), chapter_objects }),
+    });
+    document.getElementById('wcImportResult').innerHTML =
+      `<div class="result-ok">✓ Queued ${chapter_objects.length} chapter(s). <a href="/downloads" style="color:var(--green)">View progress →</a></div>`;
+  } catch(e) {
+    document.getElementById('wcImportResult').innerHTML = `<div class="result-err">✗ ${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Queue Selected Chapters';
+  }
+});
+
+// ── CBZ / Local Files ─────────────────────────────────────────────────────────
+const dropzone   = document.getElementById('dropzone');
+const cbzInput   = document.getElementById('cbzInput');
+const cbzFileList = document.getElementById('cbzFileList');
+let selectedFiles = [];
+
+dropzone.addEventListener('click', () => cbzInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('over'));
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('over'); handleFiles([...e.dataTransfer.files]); });
+cbzInput.addEventListener('change', () => handleFiles([...cbzInput.files]));
+
+function handleFiles(files) {
+  selectedFiles = files.filter(f => /\.(cbz|zip|cbr)$/i.test(f.name));
+  cbzFileList.innerHTML = selectedFiles.map(f =>
+    `<div class="file-item" id="cf-${CSS.escape(f.name)}">${esc(f.name)} <span>${(f.size/1024/1024).toFixed(1)} MB</span></div>`
+  ).join('');
+  if (selectedFiles.length) uploadFiles();
+}
+
+async function uploadFiles() {
+  const fd = new FormData();
+  selectedFiles.forEach(f => fd.append('files', f));
+  try {
+    const r = await fetch('/api/import/cbz', {method:'POST', body: fd});
+    const d = await r.json();
+    (d.imported||[]).forEach(imp => {
+      const el = document.getElementById(`cf-${CSS.escape(imp.file)}`);
+      if (el) el.className = 'file-item ok';
+    });
+    (d.errors||[]).forEach(err => {
+      const el = document.getElementById(`cf-${CSS.escape(err.file)}`);
+      if (el) { el.className = 'file-item err'; el.title = err.error; }
+    });
+  } catch(e) {
+    cbzFileList.innerHTML = `<div class="file-item err">Upload failed: ${esc(e.message)}</div>`;
+  }
+}
+</script>
+</body>
+</html>

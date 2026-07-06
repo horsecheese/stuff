@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComicVault — History</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#080810;--bg2:#0f0f1a;--bg3:#161625;--border:#1e1e35;--accent:#e63946;--text:#e8e8f0;--dim:#7a7a9a;--muted:#3a3a5a;--gold:#f4a261;--green:#2dc653;--sw:240px;--r:8px;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");background-size:200px;opacity:.35;}
+  .shell{display:flex;height:100vh;}
+  .sidebar{width:var(--sw);min-width:var(--sw);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;}
+  .logo{padding:22px 20px 16px;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--accent);border-bottom:1px solid var(--border);}
+  .logo small{display:block;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:2px;margin-top:2px;}
+  nav{padding:12px 0;flex:1;overflow-y:auto;}
+  .nav-section{padding:8px 16px 4px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;color:var(--dim);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+  .nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, transparent);}
+  .nav-item svg{width:15px;height:15px;flex-shrink:0;}
+  .nav-badge{background:var(--accent);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;font-family:'IBM Plex Mono',monospace;margin-left:auto;}
+  .sidebar-foot{padding:12px 20px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{display:flex;align-items:center;gap:12px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+  .topbar h1{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;}
+  .content{flex:1;overflow-y:auto;padding:28px;}
+  .content::-webkit-scrollbar{width:4px;}
+  .content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+  .history-list{display:flex;flex-direction:column;gap:8px;}
+  .history-entry{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;text-decoration:none;color:var(--text);transition:all .2s;}
+  .history-entry:hover{border-color:color-mix(in srgb,var(--accent) 40%,transparent);transform:translateX(3px);}
+  .history-thumb{width:42px;height:58px;object-fit:cover;border-radius:4px;background:var(--bg3);flex-shrink:0;}
+  .history-info{flex:1;min-width:0;}
+  .history-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
+  .history-meta{font-size:11px;color:var(--dim);font-family:'IBM Plex Mono',monospace;}
+  .history-prog{height:2px;background:var(--border);border-radius:1px;margin-top:6px;}
+  .history-fill{height:100%;background:var(--accent);border-radius:1px;}
+  .history-time{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;white-space:nowrap;flex-shrink:0;}
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;gap:12px;color:var(--muted);}
+  .empty svg{width:44px;height:44px;opacity:.2;}
+  .empty p{font-size:13px;}
+  .empty a{color:var(--accent);text-decoration:none;font-size:12px;}
+  .day-group{margin-bottom:24px;}
+  .day-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:10px;}
+</style>
+{% include '_theme_init.html' %}
+</head>
+<body>
+<div class="shell">
+  {% include '_nav.html' %}
+  <div class="main">
+    <div class="topbar">
+      <h1>HISTORY</h1>
+    </div>
+    <div class="content" id="content">
+      <div style="color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:13px;padding:40px;text-align:center;">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function relativeTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60)    return 'just now';
+  if (diff < 3600)  return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+  return d.toLocaleDateString();
+}
+
+function dayLabel(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today - 86400000);
+  const entryDay  = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  if (entryDay.getTime() === today.getTime())     return 'Today';
+  if (entryDay.getTime() === yesterday.getTime()) return 'Yesterday';
+  return d.toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'});
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/history?limit=200');
+    const d = await r.json();
+    const entries = d.history || [];
+    if (!entries.length) {
+      document.getElementById('content').innerHTML = `
+        <div class="empty">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p>No reading history yet.</p>
+          <a href="/">Browse your library to get started →</a>
+        </div>`;
+      return;
+    }
+
+    // Group by day
+    const groups = {};
+    for (const e of entries) {
+      const label = dayLabel(e.timestamp);
+      if (!groups[label]) groups[label] = [];
+      // De-duplicate by comic_id within day — keep latest
+      if (!groups[label].find(x => x.comic_id === e.comic_id)) {
+        groups[label].push(e);
+      }
+    }
+
+    let html = '';
+    for (const [day, items] of Object.entries(groups)) {
+      html += `<div class="day-group"><div class="day-label">${esc(day)}</div><div class="history-list">`;
+      for (const item of items) {
+        const pct = item.page_count > 0 ? Math.round((item.page) / item.page_count * 100) : 0;
+        const cover = item.cover_path
+          ? (item.cover_path.startsWith('/') ? item.cover_path : `/library/${item.cover_path}`)
+          : '/static/no-cover.svg';
+        html += `
+          <a class="history-entry" href="/reader/${item.comic_id}">
+            <img class="history-thumb" src="${esc(cover)}" alt="" onerror="this.src='/static/no-cover.svg'">
+            <div class="history-info">
+              <div class="history-title">${esc(item.title || 'Unknown')}</div>
+              <div class="history-meta">Page ${item.page} of ${item.page_count} &mdash; ${item.source || 'local'}</div>
+              <div class="history-prog"><div class="history-fill" style="width:${pct}%"></div></div>
+            </div>
+            <div class="history-time">${relativeTime(item.timestamp)}</div>
+          </a>`;
+      }
+      html += '</div></div>';
+    }
+    document.getElementById('content').innerHTML = html;
+  } catch(e) {
+    document.getElementById('content').innerHTML =
+      `<div class="empty"><p>Failed to load history: ${esc(e.message)}</p></div>`;
+  }
+}
+
+load();
+</script>
+<script>
+(function(){
+  function _cb(){
+    const ws=new WebSocket('ws://'+location.host+'/ws/downloads');
+    ws.onmessage=function(e){
+      const d=JSON.parse(e.data);
+      const n=d.jobs.filter(j=>['downloading','queued','scraping','processing'].includes(j.status)).length;
+      const b=document.getElementById('dlBadge');
+      if(!b)return;
+      b.style.display=n?'inline':'none';
+      if(n)b.textContent=n;
+    };
+    ws.onclose=function(){setTimeout(_cb,3000);};
+  }
+  _cb();
+})();
+</script>
+</body>
+</html>
