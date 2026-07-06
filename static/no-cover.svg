@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" width="200" height="280">
+  <rect width="200" height="280" fill="#0f0f1a"/>
+  <rect x="1" y="1" width="198" height="278" fill="none" stroke="#1e1e35" stroke-width="1"/>
+  <line x1="0" y1="0" x2="200" y2="280" stroke="#1e1e35" stroke-width="0.5"/>
+  <line x1="200" y1="0" x2="0" y2="280" stroke="#1e1e35" stroke-width="0.5"/>
+  <rect x="60" y="95" width="80" height="60" rx="4" fill="none" stroke="#1e1e35" stroke-width="1.5"/>
+  <path d="M80 115 L100 135 L120 115" stroke="#2a2a45" stroke-width="1.5" fill="none"/>
+  <circle cx="87" cy="110" r="5" fill="none" stroke="#2a2a45" stroke-width="1.5"/>
+  <text x="100" y="178" text-anchor="middle" font-family="monospace" font-size="9" fill="#2a2a45">NO COVER</text>
+</svg>
